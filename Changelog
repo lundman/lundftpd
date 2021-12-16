@@ -1,0 +1,340 @@
+
+LundFTPD was written by Jorgen Lundman <lundman@lundman.net>.
+
+Compilation:
+
+	* read the file ``INSTALLATION'' that comes with this package.
+
+
+New Versions, Bug Fixes:
+        * WWW: http://www.lundman.net/unix/lundftpd.html
+	* I'll place new versions and C files for small bugs.
+	* I'm in a bad need of a Man-page or FAQ, does anyone want to
+	* contribute in doing this?
+
+
+Versions:
+
+lion-tag* This is the lion tagged version of lundftpd. Read the cvs log for
+		  changes.
+	TODO: Insert CVSWEB link to Changelog here.
+
+
+2.12    * Final 2.x release of LundFTPD. Only bug fixes from now on.
+        * Please see LundFTPD v3 + LiON, and its cvs revision log.
+
+2.11    * Complete IRC announce code.
+        * Patch for SAFETP support.
+
+	! Additional support by mfm
+2.11    * Added SETPASS command to change password for another user.
+        * NUKE on it's own would nuke everything in current dir, fixed.
+        * NUKE has new syntax: Site Nuke <Dir> <Reason>, where
+          dir can't have spaces in it, a subdir with "reason" will be
+          created in the nuked dir.       
+        * NUKE is now recursive.
+        * Added config options to convert spaces in dirs and files
+        + convertmkdspace  converts " " to "_" when MKD'ing
+        + convertstorspace converts " " to "_" when STOR/APPE'ing
+
+
+2.10    * Added INTERNAL sfv support, piped queue to child process.
+        * Dynamic network buffers support in .conf for tuning.
+        * Fixed DUPE bug when using site dupe.
+        * Fixed starvation in heavy load.
+
+
+2.7     * Added simple bandwidth capping. (cpscap_*) 
+	+ cpscap_ for max CPS for a download sessions
+	+ cpscap_ for max CPS of all download sessions of an user
+	+ [cpscap_ for max CPS of all download sessions]
+	* Added !login and %login to automatically logout of currently
+	  connected login/download sessions.
+        * Added maximum logins switch
+        * Added site user to dump all if admin
+	* Added Export and Import switches to text file.
+
+
+2.6	* Finally found why some people said resume-uploads didn't work
+	+ and others said it did. APPE did not call file_appe but _stor.
+	* Fixed pesky bug with OSF1 and %q longlong prints.
+	* Fixed various set_cred bugs.
+
+
+2.5     * USERDB upgrade - should be automatic.
+	* Added SRP ciphers for crypting control and data sessions
+	* Fixed OSF sepcific bugs, both lftpd and diskcull
+	* Added LundFTPD's announcebot code. (Also ciphered) Thanks to ace.
+	* Fixed bugs with max-download and upload limits. (Pasv not closed)
+	* Compiled in Electric-Fence, malloc debug library and ...
+	*+Bug found in archive testing
+	*+Bug found in logout with active data-sessions
+	*+Free bug found in SRP logout.
+	* Fixed so num_logins to 0 means disabled account.
+	* Added IRC support for topup/dn, wall and server-stats
+	* Added remote admin command adduser
+	* Added remote admin command setratio
+	* Added remote admin command setip
+	* Added remote admin command setlimit
+
+
+2.4     * Added irc-bot support (using IDEA transport layer)
+	* Added fixes to diskcull regarding OSF/1
+	* OSF/1 Free disk support fix
+
+
+2.3     * Found bug excersised by FXP. "pasv" followed by "port" left port open
+	* Found bug in identd code leading to select failure.
+	* Found bug in 226- reply (random garbage possible)
+	* Found bug in NLST cause call to close of -1 (irrelevant)
+	* Added NcFTP non-RFC command "CLNT" for fun. Doesn't do anything.
+	* Fixed diskcull not to consider symbolic links in usage/trigger
+	* Fixed "mv -f" when diskcull moves files not owned.
+        * Removed data_close debug code that cause segv on Linux
+        * Finally found massive buffer-overrun bug, in taglines.
+        + Changed tagline size, but forgot global_* vars.  (2 Months to find)
+	* Aweful buffer-overrun in ASCII outpad, ASCII disabled for now.
+        
+
+
+2.2     * USERDB upgrade - should be automatic.
+	* Added "total" field to ls output for pftp.
+	* Added bytes/secs/files per login variables.
+	* Added "credit" scheme instead of up * ratio - down formulae.
+	* Changed NUKE, remove multiplier & deletion of files, logs to xfer.
+        * Fixed plenty bugs in dupe stuff.
+	* Added userflags DUPE and CREDITS
+	* Added site commands SETCRED and GIVE for credit transfers
+
+
+
+2.1     * Command renames: group->setgroup, gls->group, tag->tagline, 
+	  chpw->passwd, fancy->extra, whois->user.
+	* Added simple dupe-checker, (B+-tree) on STOR commands.
+	* UF_LOGINS retired. Use the num-logins settings
+	* Fixed delete to remove credits on owned, non-free files.
+	* Removed showoneliner from .conf.
+	* Added rules site command
+	* Added -f <config> argument for alternative conf load
+	* Changed default mode to be daemon
+	* Added -v for console debug mode
+	* Added SITE DUPE command
+	* Added glob wildcard search to SITE DUPE
+	* Fixed recursive ls bug, not removing tmp file.
+	* LINUX2 def'n for weird Linux db_open imp. Pattern match wont work.
+	* Changed sigaction code for POSIX port, work on to HPUX as well.
+	* Added dupepath for .conf file to list all paths under DUPE checking.
+	* Fixed bug with archive testing (tester missing, vfork and no pid).
+	
+
+2.0     * Huge userdb & quotadb changes. 
+	* Found loads of bugs in archive testing, was it even working?
+	* Fixed silly problems with .nfo and .diz auto extraction
+	* as well as problems with Dir-names with spaces in them.
+	* Added background testing of archives, and conf switch.
+        * Added .conf for login, upload and download limits.
+        * Fixed current and last login details.
+        * Wrote ShadowFTPD and AUTH protocol.
+	- Know problem:  Multiple logins vs Password or Tagline change.
+	* Fixed empty and "." args to NLST code, for broken clients.
+	* Added CHPW command for chaning of passwords.
+	* Added noident option to .conf file.
+	* Added Greeting option to .conf file.
+	* Added file and dir perm settings to .conf file.
+	* Fixed archive testing incase of execve() failure & not zip bad.
+	* Wrote message wall system (oneliners)
+	- Naming inconsistency with oneliners and message wall, Sorry.
+	* Added num_bytes for filedownload (to fix ETAs in some clients)
+	* Bug fixed in input command parsing. Been there since 0.1a :)
+	+ reported by The_Kid.
+	* Empty PASS bug (no USER issued first) bug fixed. 
+	+ reported by jeffe.
+	* PASV followed by PORT bug fixed.
+	* Added switch for uppercaseing first char of directories
+	* Added switch for lowercasing filenames
+	* Added max-file size for archive testing option
+	* Clearing of Day/Week/Month detected on server startup.
+	* Fixed passive-reconnect limit-reached bug. (SpoonWzd)
+	+ I've seen a UID swap bug. Haven't tracked it yet.
+
+
+1.7a    * Added user options, colour, and fancy
+	* Fixed data sessions finish 226 status
+	* Fix bad bug regarding re-issue of USER. (Found by SonicBoom)
+	* Started on SITE NEW command.
+	* Updated & Cleanup of diskcull (see misc dir)
+
+
+1.6a    * Fixed ``ls'' output to include the surplus '1' so it would work with
+        + lame client ls parsing (ie, Midnight Commander).
+
+
+1.5a	* Fixed ftpuser/ftpxfer log calls. Failed on daemon mode.
+	* Implemented Automatic .users. upgrade feature, when it detects
+	+ an older userdb file (and it know the version) it will automatically
+	+ upgrade it to the current release.
+	* Made top up/down output a little nicer.
+	* Implemented a NOTE/MSG system.
+	* Made usernames case insensitive, but remembers caps.
+	* Implemented automatic file_id.diz extraction from successful uploads
+	+ goes well with my program "dmsdiz" in the misc/ directory.
+	* Implemented MDTM (ncftp uses it alot)
+	* Implemented SITE LAST.
+        * Change/Upgraded autoextract call, more flexible now.
+	* Added GROUP and GROUPFILE to lundftpd.conf
+	* Implemented SITE CHGRP
+	* Implemented SITE GROUP
+	* Implemented SITE GLS
+	* Implemented SITE GTOP
+	* Seriously cleaned up the PASSIVE stuff. mget should now work too.
+	* New SITE WHO output.
+	* Proper ASYNC identd requests, instead of server pause.
+
+
+1.4a    * NOTE: .users. file is no longer compatible with 1.3a, Use 13to14
+	* Fixed uid->name lookup, added caching.
+	* Added user switch for /etc/passwd name lookups or not.
+	* Added default no-find user switch. Defaults to "nobody".
+	* Renamed old ``who'' to ``tcpstat'' and wrote a new ``who''.
+	* Fixed ``get'' following a ``reget'' command bug, corrupted dl files.
+	* Fixed so ratio-disabled users still gets download bytes counted.
+	* Fixed rmdir/del commands. owners can delete, UF_DELETE can delete
+	+ anything.
+	* Fixed rename command, and archive rename of bad files.
+	* Made CWD see ``file_id.diz'' files in any, and mixed, case.
+	* Implemented NUKE command
+	* Implemented download count, see INSTALLATION guide.
+
+
+1.3a    * Implemented an internal "ls" routine which can be chosen to be used
+	* instead of exec'ing /bin/ls. This means showing fakeusernames 
+	* (useridstart is set) is easier, and cleaner. However switches to
+	* the internal ``ls'' are only that of -t -S -r and -R. Also added
+	* pattern matching as support. (Those were the features my users most
+	* wanted.)
+	* Added a usesoftchroot for the root users so that it doesn't call
+	* chroot() but uses the software chroot instead. This is considerably
+	* more INSECURE but allows soft links to expand the FTPD's directory
+	* tree.
+	* Implemented UF_LOGINS.
+	* Did some porting checks. Thanks to Blizzard, MFM and CCRider.
+
+
+1.2a    * Tiny bug fixes
+	* Fixed immediate disconnect even before signing-in.
+	* Fixed idle timeout during data transfer.
+
+
+1.1a	* MAJOR REWRITE!
+	* NOTE: .users. file is no longer compatible with 1.01a, Use 101to11
+	* Finally got around to tackle the multiple logins concurrancy problem
+	* Moved the quota data into it's own file, .quota.
+	* Nice promote to first linked list for in-memory cache quota stats
+	* Syncing to disk of in-memory quota stats
+	* Multiple login's enabled
+	* I think I fixed TOP UP/DOWN. Confirm?
+	* Fixed special chars bug with directory names.
+	* Implemented admin command KICK to log a user off.
+	* Added real /etc/passwd lookup. (WARNING, does NOT set their userid)
+	* Fixed 10to101, seems it was broken after all :) (DDT: pffft! )
+	* Added new level system, no longer uses levels but user flags.
+	* + UF_STAT|UF_KICK|UF_OVERWRITE|UF_DELETE|UF_DIRDELETE have been
+	* + implemented so far. (and UF_NONE|UF_ALL ofcourse)
+	* Added -x switch which outputs all users in a format that can
+	* + be used to recreate the userbase again. e.g. lundftpd -x > backup
+	* + and lundftpd -a < backup. It's not recommended to use this on
+	* + an non-empty user file as clashes are not checked.
+
+
+1.01a	* NOTE: .users. file is no longer compatible with 1.0a, Use 10to101
+	* Fixed idle-timout bug, was only enabled with usertimequota.
+	* Fixed silly LINUX and SETPROCTITLE bugs
+	* Cleaned up Linux temporary hacks
+	* Fixed cd wildcards bug
+	* Added SITE HELP list of commands.
+
+
+1.0a	* NOTE: .users. file is no longer compatible with 0.8a, Use 07to10
+	* Fixed that damn FileCheck code again, maybe it's correct now.
+	* Added TOP up/down list, inherit problems that need resolving.
+	* Added SmartPath CD shortcuts.
+	* Added REST (For reget,  can't believe I hadn't already done it?!)
+	* Added HELP, and SITE HELP strings. (quite boring)
+	* Fixed Verbal error message in CD (Lurch)
+	* Added Wildcard matching in CD
+	* Added NLST properly for mget/mdel
+	* Added DELE (delete of files)
+	* Added MKD (make dir)
+	* Added RMD (remove dir)
+	* Added FREE files in filechecks.
+	* Added NOCHECK for untestable archives.
+	* Fixed root execution, now chown's files/dirs. See file ROOT.TXT.
+	* Added output of ./etc/passwd for root execuation and LIST.
+	* Added useridstart for /etc/passwd userid's. See file ROOT.TXT.
+	* Fixed exec.c not to use /bin/sh.
+	* Temp hack fix for Linux (Lurch)
+	* Added userid swapping for special root setuid mode.
+	* Fixed yet another bug in software chroot
+	* Added PASV (Passive Mode connections)
+	* Added RNFR/RNTO (Rename file / directories)
+
+
+0.8a	* Fixed misc/06to07.c :)
+	* Implemented lundftpd -l to list users.
+	* Fixed unknown-archive test bug (DDT, Lurch)
+	* Added display of .message or file_id.diz files on CD/Login
+	* Shows logins and data sessions active on process list. (ps)
+
+0.7a	* NOTE: .users. file is not compatible with 0.6a (delete and re-create)
+	  or try your luck with the last item. :)
+	* Fixed lame bug in ipmatching (it wasn't being saved)
+	* Implemented archive checking
+	* Fixed -q with -[ade] incompatibility.
+	* Having timequota disabled was broken, fixed.
+	* Fixed bug which allowed 'ls' outside chroot dir. (ugh!)
+	* Fixed really obscure bug with it would loose chrootdir after
+	  first cd. Problem brought to me by DDT
+	* Implemeted lundftpd -e  (edit)
+	* Implemented simple IP checking. (IP only, no hostnames)
+	* Crude 0.6a to 0.7a user file conversion tool (untested)
+
+0.6a	* Added proper -q quiet mode which enables the background daemon
+	  execution
+	* Patched ncftp NLST lameness
+	* fixed "mget", it's still broken, assumes "mget *"
+	* fixed upload bug since bigfix of 0.4a
+	* lost readme, can't remember what else I fixed?
+
+
+0.5a	* Fixed STAT in out-of-band data mode to follow protocol
+
+0.4a	* NOTE: .users. file is not compatible with 0.3a (delete and re-create)
+	* Fixed bug in root execution (file.c - cwd)
+	* Implemented ABOR (Multi data sessions need testing)
+	* Fixed overwrite on files
+	* Implemented time limit. All quota's active.
+	* (need to fix relogin, user gets 30 secs)
+	* Implemented idle timeout
+
+0.3a    * Added MKD (mkdir)
+
+0.2a	* Adding quotas - seems working
+	* Fixed bug in file.c FILE_OLD
+	* Added check for multiple logins.
+	* adding quota output on file complete, STAT command.
+
+
+0.1a	* First version - Got Haywood to beta test.
+
+
+
+
+
+
+
+
+
+
+
+
+

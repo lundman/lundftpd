@@ -1,0 +1,99 @@
+
+	event {
+		type = "START";
+		format = "Startup: Server is now online.";
+	};
+	event {
+		type = "STOP";
+		format = "Shutdown: %msg%";
+	};
+	event {
+		type = "WALL";
+		format = "Wall: <%user%> %msg%";
+	};
+
+	event {
+		type = "MKD";
+		format = "[%section%] New Release: <%user%> %dir%";
+	};
+	event {
+		type = "RMD";
+		format = "[%section%] Deleted Release: <%user%> %dir%";
+	};
+
+	event {
+		type = "COMPLETE";
+		format = "[%section%] Completed: <%user%> %dir%";
+	};
+
+	event {
+		type = "NUKE";
+		format = "[%section%] Nuke: %nuker% on %dir% at x%multiplier% for: %reason%";
+	};
+
+	event {
+		type = "UNNUKE";
+		format = "[%section%] UnNuke: %nuker% on %dir% at x%multiplier% for: %reason%";
+    };
+
+	event {
+		type = "MP3GENRE";
+		format = "[%section%] MP3 Genre: <%year%-%genre%> %dir%";
+	};
+
+	event {
+		type = "IMDB";
+		format = "[%section%] IMDb: %url% for %dir%";
+	};
+
+	event {
+		type = "PRE";
+		format = "PRE: <%user%> to %dir%";
+	};
+
+	event {
+		type = "MOVE";
+		format = "[%section%] Move: %user% moves in %dir%";
+	};
+
+	event {
+		type = "NEWDAY";
+		format = "New Day: We saw %gbup% GB uploaded in %fup% files during %sup% seconds.  %gbdn% GB downloaded in %fdn% files during %sdn% seconds.";
+	};
+	event {
+		type = "CPS";
+		format = "KB/s: %USER% Up: %UP%     Down: %DOWN%    Total: %TOTAL%";
+	};
+
+	event {
+		type = "FILLED";
+		format = "[%section%] %user% completes request %dir%";
+	};
+	event {
+		type = "UPLTOP";
+		format = "[ USER         ] [ FILE                 ] [ MB/s    ] [ MB      ] ";
+	};
+
+	event {
+		type = "UPLUSER";
+		format = "[ %USER% ] [ %FILE% ] [ %UP% ] [ %CURRENT% ]";
+	};
+
+	event {
+		type = "UPLBOT";
+		format = "[ TOTAL        ] [ %TOTAL% Uploaders    ] [ %UP% ] ";
+	};
+
+	event {
+		type = "DWNTOP";
+		format = "[ USER         ] [ FILE                 ] [ MB/s    ] [ MB      ] ";
+	};
+	event {
+		type = "DWNUSER";
+		format = "[ %USER% ] [ %FILE% ] [ %DOWN% ] [ %CURRENT% ]";
+	};
+
+	event {
+		type = "DWNBOT";
+		format = "[ TOTAL        ] [ %TOTAL% Downloaders  ] [ %DOWN% ] ";
+	};

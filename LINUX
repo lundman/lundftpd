@@ -1,0 +1,30 @@
+
+POSIX:
+
+man setsockopt:
+
+
+   ``SO_SNDLOWAT is an option to set the minimum count for output operations.
+     Most output operations process all of the data supplied by the call, de-
+     livering data to the protocol for transmission and blocking as necessary
+     for flow control.  Nonblocking output operations will process as much da-
+     ta as permitted subject to flow control without blocking, but will pro-
+     cess no data if flow control does not allow the smaller of the low water
+     mark value or the entire request to be processed.  A select(2) operation
+     testing the ability to write to a socket will return true only if the low
+     water mark amount could be processed.  The default value for SO_SNDLOWAT
+     is set to a convenient size for network efficiency, often 1024.''
+
+
+However, even tho the man pages in Linux mention this SO_SNDLOWAT doesn't
+seem to be available anywhere in its include files. How do I set Low Water
+Mark on Linux? This code currently has a crude fix for it but this really
+slows down the server.
+
+lordlund@dircon.co.uk.
+
+
+
+Ok, I have temporarily fixed things by allocating even more memory, thanks
+to Linux, things should work fine now, even though Linux will have to do 
+twice as much work. 

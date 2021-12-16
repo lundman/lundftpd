@@ -1,0 +1,73 @@
+#!/bin/sh -
+#
+# Goes down directories (DIR) looking for files matching
+# PATTERN and creates genre subdirs in GENREDIR based on it,
+# then links to files in DIR from genre subdirs.
+#
+# Note: requires amongst other things a working grep that
+# sets the returncode correctly.
+#
+# -- Michael Shuldman, 2002.
+
+
+
+# directory to start going down from.
+DIR='/disk12/mp3'
+
+# directory to contain the genres.  Note that if this is not
+# a separate dir, you should comment out the rmdir in the XXX
+# section below.
+GENREDIR='/disk01/files/mp3-genre'
+
+# pattern of file in each dir.
+PATTERN='__MP3_Year_[0-9][^_]*_-_Genre_[^_][^_]*_MP3__'
+
+# what's needed to pick out the genre part of PATTERN.
+# Must not contain slashes ('/').
+GENREPATTERN='.*__MP3_Year_[0-9][^_]*_-_Genre_\([^_][^_]*\)_MP3__'
+
+# if we would end up linking to something that contains the below
+# pattern, link to the directory one step up ("..") instead.
+# ah, the mazes we create.
+BACK_UP="/[cC][dD][_]*[0-9]+$"
+
+
+# first clean up our directory (remove dead links).
+find "${GENREDIR}" -type l -print |while read linkname
+do
+	if [ ! -d "${linkname}" ]; then 
+		rm "${linkname}";
+	fi
+done
+
+# XXX
+# should delete empty dirs (presumably previously created genre dirs that
+# are not in use at the moment), but if GENREDIR is in same dir as DIR,
+# there would be a race when user creates a dir to upload into.
+rmdir "${GENREDIR}/*" 2>/dev/null
+
+
+# find all directories we want to link to, each will have a file with
+# a name matching PATTERN.
+find "${DIR}" -size 0 -name "${PATTERN}" -print |while read filename
+do
+	# got the file, pick out the genre part of it.
+	genre=`echo "${filename}" | sed -e 's/'"${GENREPATTERN}"'/\1/'`
+#	echo "$filename -> $genre"
+
+	# create a directory for genre if it doesn't exists already.
+	if [ ! -d "${GENREDIR}/${genre}" ]; then 
+		mkdir "${GENREDIR}/${genre}" || exit;
+	fi
+
+	# find out what directory to link to.  Should perhaps use while.
+	linkname=`dirname "${filename}"`;
+	if `echo "${linkname}" |grep -E "${BACK_UP}" >/dev/null`; then
+#		echo -n "${linkname} -> "
+		linkname=`dirname "${linkname}"`;
+#		echo "${linkname}"
+	fi
+
+	# link from source to genre dir.
+	ln -fs "${linkname}" "${GENREDIR}/${genre}"
+done

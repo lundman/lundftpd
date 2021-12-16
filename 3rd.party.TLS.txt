@@ -1,0 +1,81 @@
+
+Extension to support 3rd party transfers with TLS for FTP,
+by Jorgen Lundman <lundman@lundman.net> and 
+Tomas Svensson <ts@unix1.net> 2003/03/07.
+
+
+
+We wanted to change the FTP protocol as little as possible, but still
+allow 3rd party transfers to be encrypted. The decision to attempt an
+encrypted third party transfer is left to the FTP client, as it is the
+only piece that has all the information.
+
+The client should issue the "FEAT" command which should inform the
+client if the FTP server is capable of handling 3rd party encrypted
+transfers. Suggested output is:
+
+ftp> quote FEAT
+---> FEAT
+211-Features supported
+ MDTM
+ REST STREAM
+ SIZE
+ AUTH TLS +proxy
+211 End
+
+
+The "+proxy" indicated that it is enabled.
+
+
+You should initiate TLS has per normal, and set the desired PROT level
+that is desired. If you wish to perform a 3rd party encrypted
+transfer, you need to keep the PROT level at "P" (Private).
+
+The only change that has been made to the FTP protocol is that the FTP
+server side that receives the "PORT x,x,x,x,y,y" command, and will
+eventually call connect() to establish the data connection, will if
+the control channel, and data channel's, IPs are not the same, call
+SSL_connect() instead of SSL_accept.
+
+That is all.
+
+Please note that only the FTP server receiving the PORT end of the 3rd
+party transfer needs to be upgraded to understand this new
+feature. The FTP server that receives "PASV" can be an unmodified
+server, assuming there are no firewalling issues in between the
+servers.
+
+
+Oh and this will most likely only work with SSL/TLS encryption. Not
+SafeTP, SRP or Kerberos.
+
+
+
+So, to sum up. 
+
+Client changes:
+
+* issue "FEAT" and detect that one, or both, FTP servers have "+proxy".	  
+
+* Client can the chose to remain at PROT level "p" when it initiates a
+  3rd party transfer.
+
+* If only one FTP server has support, ensure the "PORT" command is
+  sent to it. (Ie, send "PASV" to the unmodified first.
+
+
+Server changes:
+
+* Modify "FEAT" reply
+
+* When about to call SSL_accept() for a data session, if the IP used
+  for the data session differs from that of the control channel, call
+  SSL_connect instead.
+
+
+
+Lundy
+
+
+
+

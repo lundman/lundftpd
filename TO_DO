@@ -1,0 +1,25 @@
+
+* Fix delete file
+
+* Fix multiline add
+
+* Check num_up and downloads..
+
+* Upload resume?!
+
+* convertmkdspace converts spaces in MKD etc, however, when a file is 
+  uploaded with "/full dir/filename" the directory part is not converted.
+
+
+
+
+
+
+
+
+IRCBOT bi-directional.
+
+Currently when we send an IRC command to lftpd and lftpd replies, we have
+the slight issue that the reply is "broadcast". It goes to all configured
+ircbots, and eyot will send to all configured channels. Not exactly
+what is desired.

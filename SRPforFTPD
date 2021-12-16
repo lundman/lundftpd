@@ -1,0 +1,128 @@
+
+SRP is no longer supported. The defacto-encryption standard for FTP has become
+SSL. This is now preferred. 
+
+
+
+
+I've recently added SRP cipher support for my FTPD and thought I'd
+write down what was required so others can post theirs to support it.
+
+
+SRP Homepage  : http://srp.stanford.edu/srp/
+Latest version: 1.4.4 (time of document)
+
+SRP also requires you get gmp-library from gnu. Documentation and
+links are on SRP's homepage.
+
+The minimum required to add SRP to FTPD are as follows:
+
+libraries:  libsrp  libgmp  libkrypto
+C-files  :  srp.c   radix.c   ( in the ftp subdirectory )
+H-files  :  srp.h   t_pwd.h t_server.h  krypto.h
+
+
+New RFC FTP commands:
+
+
+AUTH 
+	* Initiator of the SRP authentication challenge. Typically
+	sent as "AUTH SRP". 
+
+ADAT
+	* Part of the secure channel authentication, here protocol
+	versions, salts and keys are exchanged. This is a 7 stage
+	command, so look at srp.c in ftp to work it out.
+
+PBSZ   
+	* Set the size of the encryption/decryption buffer. Notice due
+	to ciphered data expanding the block-size's received are
+	usually slightly less. SRP's default is 1024. I prefer 8192.
+
+PROT
+	* Set protection level. "C" for clear (no encryption), "P" for
+	private level (both control & data ciphered) and "S" Safe mode
+	where only control connection is ciphered. (Notice block-size
+	is still sent in Safe mode).   
+
+
+
+Server replies are:
+
+ENC
+MIC
+	* Reply sting is encoded, pass through decoder, and then
+	interpret. MIC and ENC commands are followed by a "-" sign
+	a'la normal FTP replies if there are more to follow. 
+
+
+
+Typical login phase:
+
+
+220 netbsd FTP server (SRPftp 1.3) ready.
+ftp> debug 100
+Debugging on (debug=100).
+ftp> user lundman
+---> AUTH SRP
+SRP accepted as authentication type.
+---> ADAT AAAABAAAAAE=
+---> ADAT AAAAB2x1bmRtYW4=
+---> ADAT AAAAgHhJzqMLTkjpnaQwo5e2hAofEZEKasO5tWoDE6Y0NjFPCOIgoc3tWRS8Nh6k7EPP6FhXXXLk1Leu/kTrQ0GoHGktbbfrqJXBc7psQJwxIISS9w9VyzOb8n8du1Akv4cHEGOZNoHm3SGhupFr586Iyky6UR93p9/6qhfciSqSQ5R/
+SRP Password:
+---> ADAT AAAAFGliW6SVp0FbLI8l2G0k+WNXT4ae
+---> ADAT AAAAAQA=
+---> ADAT AAAAAQcAAAABAgAAAASsugv2
+SRP authentication succeeded.
+Using cipher CAST5_CBC and hash function SHA.
+---> PBSZ 1024
+secure_command(PBSZ 1024)
+encoding 60 bytes MIC AAAAAQAAAAEAAAAJUEJTWiAxMDI0rLoL9krPCSMnqsiMcSOdcUctnYjUd0ag
+---> PROT P
+secure_command(PROT P)
+encoding 56 bytes MIC AAAAAQAAAAEAAAAGUFJPVCBQrLoL99aICgM8E9kMZhtmARTl7q1GJJUt
+200 Protection level set to Private.
+---> USER lundman
+secure_command(USER lundman)
+encoding 76 bytes ENC AAAAAQAAAAKzltgHvxVAy2TsYJahplM7ic2oR9qEHY8/eX2dYpv8GLPev9ok0wR/hwjXQ+HClqw=
+232 user lundman authorized by SRP.
+---> PASS XXXX
+secure_command(PASS dummy)
+encoding 76 bytes ENC AAAAAQAAAAJ+1Q0yNfsNTKcIbJBxJMN8dxjS7rkbVk7CR79HUXqo09MOx1LE4kbyYke/q6fqQ3U=
+230 User lundman logged in.
+
+
+
+Notice the dummy USER/PASS calls. From here on SRP is on.
+
+
+Data-connections:
+
+The hassle with crypting the data-sessions is that you have to send
+the data block sizes in the middle of the stream. These are always
+sent in "network byte order" and as a 4 byte unsigned integer. Also,
+when you are sending, you have to send an "empty" buffer (call to
+srp_encode with a length of 0) to flush the last of the data out). The
+encrypted data can increase by up to 64 bytes. (According to SRP
+sources).
+
+
+
+
+Addition:
+
+Although it is not mentioned in SRP, you can send commands
+un-encrypted and I recommend to give users the option on whether or not
+to cipher the commands PORT and PASV. The reason is if the user is
+behind an ACTIVE firewall they can still use encryption in their FTP
+sessions.  LundFTPD replies plain text to any command sent plain text,
+so that PASV (and hence the PASV reply string) will work appropriately
+through ACTIVE FTP firewalls.  This will not lessen security.
+
+
+Jorgen Lundman.
+
+lundman@whiterose.net
+
+
+

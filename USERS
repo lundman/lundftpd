@@ -1,0 +1,21 @@
+To create new users, do 
+	lundftpd -a
+
+To delete a user/users,
+	lundftpd -d
+
+To edit a user/users,
+	lundftpd -e
+
+To start ftpd as a background task,
+	lundftpd -q
+
+To list a user/users,
+	lundftpd -l
+
+To dump users into a form which can be used to recreate database,
+	lundftpd -x
+
+To recreate user database from dump,
+	lundftpd -a < dump.txt
+

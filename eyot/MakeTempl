@@ -1,0 +1,104 @@
+# Makefile Template v1.2
+# Written by Milton Ngan (milton@comp.vuw.ac.nz)
+# Updated Wednesday 10 August 1994
+# Written Friday 1st April 1994
+#
+
+# v1.2 Changes 
+#
+# Added in Lex source file support, will probably add Yacc at some stage as
+# well :-)
+
+# v1.1 Changes
+#
+# Updated .depend rule so that is creates a .depend for each source file
+# this is more efficient. Also added HEADERS so that dependencies also depend
+# on the header files. This is so that inter header dependecies will cause the
+# appropriate dependency changes
+
+MAKETEMPL = ./MakeTempl
+LSRCS     = $(LXSRCS:%.l=%.c)
+YSRCS     = $(YCSRCS:%.y=%.tab.c)
+YHEADERS  = $(YCSRCS:%.y=%.tab.h)
+SRCS	  = $(CSRCS) $(CCSRCS) $(LSRCS) $(YSRCS)
+OBJS	  += $(ASRCS:%.s=%.o) $(CSRCS:%.c=%.o) $(CCSRCS:%.cpp=%.o) $(LXSRCS:%.l=%.o) $(YCSRCS:%.y=%.tab.o) 
+DEPENDS   = $(SRCS:%=%.dep)
+ARFLAGS  +=
+
+%.o: %.cpp
+	$(CC) -c $(CFLAGS) $(INCS) $(DEFINES) $< -o $@
+
+%.o: %.s
+	$(AS) $(AFLAGS) $(INCS) $(DEFINES) $< -o $@
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) $(INCS) $(DEFINES) $< -o $@
+
+%.c: %.l
+	$(LEX) -t $(LXFLAGS) $< > $@
+
+%.tab.c: %.y
+	$(YACC) $(YCFLAGS) $<
+
+%.tab.h:
+	$(YACC) -d $(YCFLAGS) $*.y
+
+all: $(DEPENDS) $(PROG) 
+	@$(BUILD)
+
+$(PROG): $(OBJS) $(OTHER)
+	$(CC) $(LDFLAGS) $(CFLAGS) $(OBJS) $(LDPATH) $(LIBS) -o $(PROG)
+	$(POSTLINK)
+
+$(LPROG): $(OBJS) 
+	$(AR) $(ARFLAGS) $(LPROG) $(OBJS)
+	$(POSTLINK)
+
+%.tab.c.dep: %.tab.c %.tab.h Makefile $(MAKETEMPL)
+	@if [ -f $@ ]; then \
+	  echo Updating dependencies for $<...; \
+	else \
+	  echo Making dependencies for $<...; \
+	fi
+	@rm -f $@
+	@$(CC) $(CFLAGS) $(INCS) $(DEFINES) -MM $< > $@
+
+%.c.dep: %.c Makefile $(MAKETEMPL) $(YHEADERS)
+	@if [ -f $@ ]; then \
+	  echo Updating dependencies for $<...; \
+	else \
+	  echo Making dependencies for $<...; \
+	fi
+	@rm -f $@
+	@$(CC) $(CFLAGS) $(INCS) $(DEFINES) -MM $< > $@
+
+%.cpp.dep: %.cpp Makefile $(MAKETEMPL) $(YHEADERS)
+	@if [ -f $@ ]; then \
+	  echo Updating dependencies for $<...; \
+	else \
+	  echo Making dependencies for $<...; \
+	fi
+	@rm -f $@
+	@$(CC) $(CFLAGS) $(INCS) $(DEFINES) -MM $< > $@
+
+install: $(PROG)
+	@if [ ! -e $(INSTDIR) ]; then \
+	  install -d -m 755 $(INSTDIR); \
+	fi
+	install $(INSTFLAGS) $(PERM) $(PROG) $(INSTDIR)
+
+depend:
+	@rm $(DEPENDS)
+
+clean: depend 
+	@rm -f *.output \#* *~ *.o $(YSRCS) $(YHEADERS) $(LSRCS) $(OBJS) $(PROG) $(PROG).core core *.log
+
+help:
+	@clear
+	@echo How To Use This Makefile
+	@echo
+	@echo 1\) Fill out the appropriate fields in the Makefile
+	@echo 2\) Build your program using: gmake $(PROG)
+	@echo
+
+include $(DEPENDS)

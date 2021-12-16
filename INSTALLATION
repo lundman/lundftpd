@@ -1,0 +1,209 @@
+# LION VERSION!!
+
+This document is not quite up to date with the lion version of lundftpd, but
+you have at least managed to grab the right version of lundftpd.
+
+If you read this, you have probably managed to check out the latest
+version from CVS, this is a good start. Directories of interest:
+
+./lundftpd/
+./lundftpd/src/     - the main FTPD sources, example .conf etc.
+./lundftpd/misc/    - diskcull util, example sh scripts and sitecust scripts.
+./lundftpd/lion/    - lion sources with lundftpd.
+./lundftpd/eyot/    - small ircbot code that comes with lundftpd.
+./lundftpd/win32/   - MSVC++ v6 project files for Windows.
+
+
+*) Step 0. 
+
+Getting sources from CVS:
+
+# cvs -d ":pserver:anoncvs@lundman.net:/home/cvsroot" login
+The anonymous password is "anoncvs".
+
+# cvs -d ":pserver:anoncvs@lundman.net:/home/cvsroot" checkout lundftpd
+
+
+
+
+*) Step 1.
+
+# cd lundftpd/src/
+# ls Makefile*
+
+Pick the make file for your operating system. The default one is for
+NetBSD and most sane Posix Unix boxes. If you want to change to a
+different Makefile, for example Makefile.sunos:
+
+# rm Makefile
+# ln -s Makefile.sunos Makefile
+
+
+*) Step 2.
+
+# make
+
+It required gnumake, which could be called "make", "gmake" or
+"gnumake" on your system.
+
+Lundftpd-3.03 (time of writing) is binary compatible with v2.12 data files with
+the exception of groups file. The lundftpd.conf is completely new however.
+
+
+*) Step 3.
+
+You can now copy the binary executable "./lundftpd/src/lundftpd" and
+example configuration file "lundftpd.conf" to a desired location, or
+test it where it is. Either is fine.
+
+Edit your lundftpd.conf.  But I would recommend only changing items as
+port and paths. 
+
+The default "lundftpd.conf" assumes you use "ftp-data/" as a
+subdirectory from where you start lundftpd to store its data
+files. You will need to create it, and "ftp-logs".
+
+# mkdir ftp-data
+# mkdir ftp-logs
+
+*) Step 4.
+
+Create yourself of at least one login (presumably with admin
+privileges).
+
+# ./lundftpd -a
+
+You can give it privilege of "UF_ALL". Then you can do all other
+administrations with "SITE" commands.
+
+
+
+*) Step 5.
+
+Start lundftpd. The first time it can be handy to start it with
+logging on.
+
+# ./lundftpd -v
+
+This way you can spot any issues it might have on your system. Hit ^C
+to exit it, and to run it properly in the background, use:
+
+# ./lundftpd
+
+Remember to start lundftpd in the directory where ftp-data/ is!
+
+
+*) Step 6.
+
+Login, and look around. Tweak your "lundftpd.conf" until you are
+happy. When lundftpd is running, you will notice it is three
+processes. (Unless you have increased the number of dirlist child
+helpers). To stop lundftpd, you can just send "INT" to the main
+one. (Generally the process with the lowest <pid>)
+
+# kill -INT <pid>
+
+Or perhaps:
+# pkill -INT lundftpd
+
+INT tells it to cleanly finish, let the checker child save its list of
+entries to test and exit. If you HUP it, or use -9, the checker child
+will just exit, and if there were files to test in the queue, they
+will not be tested. (Unless you use "SITE RESCAN" to re-issue those
+missed entries).
+
+
+
+Good luck!
+
+
+
+
+# USAGE
+
+	To list help,
+	        lundftpd -h
+
+	To create a user/users,
+		lundftpd -a
+
+	To delete a user/users,
+		lundftpd -d
+
+	To edit a user/users,
+		lundftpd -e
+	        Note that the EDITOR variable has to be set.
+	        I.e. 'setenv EDITOR vi' or maybe 'export EDITOR=vi'
+
+	To list a user/users,
+		lundftpd -l
+
+	To start ftpd in verbose mode (don't go daemon),
+		lundftpd -v
+
+	To dump users into a form which can be used to recreate database,
+		lundftpd -x > dump.txt
+
+	To recreate user database from dump,
+		lundftpd -a < dump.txt
+
+	To load alternative configfile,
+	        lundftpd -f <file>
+
+
+	To list entries in dupe-database,
+	        lundftpd -p <file>
+	        Note that wildcards are allowed.
+
+
+
+
+
+
+
+
+
+# COMPILE TIME SWITCHES  These are in the Makefiles.
+
+	DIRBOT:
+	  Include sources to enable sending of announces to an irc bot.
+
+    RACESTATS:
+	  Include sources to enable racestats, both for announces, and for
+      detailed reports stored in ".message". Includes number of users,
+      time it took, speed and size uploaded for each entry.
+
+	POSIX:
+	  If set, lundftpd tries to set the max number of open file descriptors
+	  to that of the system maximum as opposed to user maximum.
+
+	LINUX:
+	  For compilation on LINUX systems which don't support proper POSIX
+	  calls.
+
+	IRIX:
+	  IRIX Specific code.
+
+	SUNOS:
+	  SunOS & Solaris specific code.
+
+	AMIGA:
+	  Amiga Specific code.
+
+	DUPECHECK
+	  Enable dupecheck
+
+	USE_NDBM:
+	  Use NDBM database system.
+
+	USE_GDBM:
+	   Use GDBM database system (linux common).
+
+	SPECIAL_CAP_ON_HOUR=<hour>
+       Compile time hack to enable the capping code at a certain hour
+of the day. Set this to "22" to mean "turn on at 22:00".
+
+	SPECIAL_CAP_OFF_HOUR=<hour>
+       Compile time hack to enable the capping code at a certain hour
+of the day. Set this to "19" to mean "turn off at 19:00".
+

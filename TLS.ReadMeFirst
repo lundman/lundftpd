@@ -1,0 +1,30 @@
+Very Important:
+
+Do NOT set the data_buffer_size variable in the config to the same or
+larger than your TCP buffer size, it will make the CPU usage go up
+and the performance down with a magnitude of atleast 10.
+
+To see your TCP buffer sizes on BSD systems use:
+
+sysctl net.inet.tcp.recvspace
+sysctl net.inet.tcp.sendspace
+
+---
+
+To create a RSA key and cerificate use:
+
+openssl req -new -x509 -days 365 -nodes -config lftpd.cnf -out \
+lftpd.pem -keyout lftpd.pem
+
+then specify this file with the tlsrsafile option in lundftpd.conf
+
+---
+
+If your system lacks /dev/urandom, do NOT link a possibly existing
+/dev/random but instead use a entropy gathering daemon like PRNGD (PRNGD
+is never drained and can never block (unlike the original EGD or
+/dev/random)). PRNGD can be found on:
+http://www.aet.tu-cottbus.de/personen/jaenicke/postfix_tls/prngd.html
+
+The path to the egd-pool is specified with the egdsocket option in
+lundftpd.conf

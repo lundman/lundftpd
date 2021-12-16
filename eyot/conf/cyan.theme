@@ -1,0 +1,127 @@
+
+	event {
+		type = "START";
+		format = "Startup: 11Server is now online.";
+	};
+	event {
+		type = "STOP";
+		format = "Shutdown: 11%msg%";
+	};
+	event {
+		type = "WALL";
+		format = "Wall: <%user%> %msg%";
+	};
+
+	event {
+		type = "MKD";
+		format = "[11%section%] New Release: <10%user%> 11%dir%";
+	};
+	event {
+		type = "RMD";
+		format = "[11%section%] Deleted Release: <10%user%> 11%dir%";
+	};
+
+	event {
+		type = "SFV";
+		format = "[11%section%] New SFV File: <10%user%> 11%dir% - %count% files";
+	};
+
+	event {
+		type = "COMPLETE";
+		format = "[11%section%] Completed: <10%user%> 11%dir%";
+	};
+
+	event {
+		type = "NUKE";
+		format = "[11%section%] 0,7Nuke: 1,07%nuker%0,07 on 0,07%dir% at x%multiplier% for: 11%reason%";
+	};
+
+	event {
+		type = "NUKEE";
+		format = "[11%section%] -> 10%user% of 10%group% loses %credits%MB (%files%f %mbytes%mb)";
+    };
+
+	event {
+		type = "UNNUKE";
+		format = "[11%section%] UnNuke: 10%nuker% on 11%dir% at x%multiplier% for: %reason%";
+    };
+
+	event {
+		type = "UNNUKEE";
+		format = "[11%section%] -> 10%user% of 10%group% gains %credits%MB (%files%f %mbytes%mb)";
+    };
+
+	event {
+		type = "RACEHALF";
+		format = "[11%section%] Race Halfway: 11%dir% %half%/%files% files by %racercnt% racer(s) in %mins%m%secs%s. 10%user%@10%group% leads!";
+	};
+
+	event {
+		type = "RACERSTART";
+		format = "[11%section%] New Racer: <10%user%@10%group%> begins 11%dir% at %speed%KB/sec";
+	};
+
+	event {
+		type = "RACEEND";
+		format = "[11%section%] Completed: 11%dir% by %racecnt% racer(s) in %hours%h%min%m%sec%s";
+	};
+
+	event {
+		type = "RACEREND";
+		format = "[11%section%]     [%rank%] 10%user%@10%group% %files%/%total% %speed%KB/sec %megs%MB %percent%%% %time%";
+	};
+
+	event {
+		type = "RACERNEW";
+		format = "[11%section%] New Racer: <10%user%@10%group%> challenges [ %racers% ] on 11%dir% at %speed%KB/sec";
+	};
+
+	event {
+		type = "MP3GENRE";
+		format = "[11%section%] MP3 Genre: <%year%-%genre%> 11%dir%";
+	};
+
+	event {
+		type = "IMDB";
+		format = "[11%section%] IMDb: %url% for 11%dir%";
+	};
+
+	event {
+		type = "PRE";
+		format = "[11%section%] pre: <10%user%@10%group%> 11%dir%";
+	};
+	event {
+		type = "CPS";
+		format = "KB/s: %USER% Up: %UP%     Down: %DOWN%    Total: %TOTAL%";
+	};
+	event {
+		type = "NEWDAY";
+		format = "New Day start. Yesterday's stats: %GBUP% GB, %FUP% files uploaded, %GBDN% GB, %FDN% files downloaded.";
+	};
+	event {
+		type = "UPLTOP";
+		format = "[ USER         ] [ FILE                 ] [ MB/s    ] [ MB      ] ";
+	};
+
+	event {
+		type = "UPLUSER";
+		format = "[ %USER% ] [ %FILE% ] [ %UP% ] [ %CURRENT% ]";
+	};
+
+	event {
+		type = "UPLBOT";
+		format = "[ TOTAL        ] [ %TOTAL% Uploaders    ] [ %UP% ] ";
+	};
+	event {
+		type = "DWNTOP";
+		format = "[ USER         ] [ FILE                 ] [ MB/s    ] [ MB      ] ";
+	};
+	event {
+		type = "DWNUSER";
+		format = "[ %USER% ] [ %FILE% ] [ %DOWN% ] [ %CURRENT% ]";
+	};
+
+	event {
+		type = "DWNBOT";
+		format = "[ TOTAL        ] [ %TOTAL% Downloaders  ] [ %DOWN% ] ";
+	};

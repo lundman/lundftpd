@@ -1,0 +1,41 @@
+
+LundFTPD-2.5 and onward now supports SRP ciphers for both control and
+data- sessions. To add SRP to your build of LundFTPD you need to get
+the SRP package (1.4.4 at the time of this document) and place it
+adjacent to your LundFTPD directory.
+
+Like so:
+
+drwxr-xr-x   5 lundman  admin     512 Apr 20 14:42 lundftpd-2.5
+drwxr-xr-x  16 lundman  admin    1024 Mar 27 16:12 srp-1.4.4
+
+and compile SRP. The libraries required are: srp, gmp and krypto. The
+rest is not required. (To compile SRP you'll also need to get gmp
+library for it - follow the instructions).
+
+Pick you Makefile best suitable for your system and add (or
+uncomment):
+
+------- cut cut --------
+#
+# SRP - Encryption of network traffic
+#
+DEFINES+= -DSRP -I../../srp-1.4.4/include
+LDPATH += -L../../srp-1.4.4/lib
+LIBS   += -lsrp -lgmp -lkrypto
+------- cut cut --------
+
+near the end, but before the final "include" statement.
+
+Now compile.
+
+
+
+
+Use SRP's "tconf" utility to create your master-key, I recommend
+atleast 1024 bits. Also create an empty SRP-database file (as
+specified in lundftpd.conf) with safe permissions.
+
+
+
+Any problems you can always email me at lundman@whiterose.net.
