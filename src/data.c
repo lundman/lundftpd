@@ -513,8 +513,8 @@ int data_handler( lion_t *handle,
 			// BUG 2004:12:17 - ONLY delete the file if we were an
 			// UPLOAD. Classic, wiping files randomly.
 			if (d->name && *d->name &&
-				(d->type & DATA_STOR) &&
-				section_deletebad(d->name)) {
+				(d->type & DATA_STOR) {
+					if (section_deletebad(d->name)) {
 
 				char *p;
 
@@ -532,6 +532,13 @@ int data_handler( lion_t *handle,
 				race_file_deleted(d->name, p);
 				pathfixsplit(d->name, p);
 #endif
+			} else {
+				// File failed, make it writable by others
+				file_goroot();
+				chmod(d->name, (mode_t) 0666);
+				file_gononroot();
+				}
+
 			} else {
 
 				// Update the bytes counter stats. Needs to be done while we
@@ -615,7 +622,14 @@ int data_handler( lion_t *handle,
 			data_update_stats(d);
 
 			// We remote STOR so we don't enter check_isbad code.
-			d->type &= ~DATA_STOR;
+			// We remove STOR so we don't enter check_isbad code.
+			if (d->type & DATA_STOR) {
+				d->type &= ~DATA_STOR;
+				if (d->name) {
+					consolef("Deleting file: '%s'\n", d->name);
+					remove(d->name);
+				}
+			}
 
 			lion_disconnect(d->handle);
 
