@@ -513,7 +513,7 @@ int data_handler( lion_t *handle,
 			// BUG 2004:12:17 - ONLY delete the file if we were an
 			// UPLOAD. Classic, wiping files randomly.
 			if (d->name && *d->name &&
-				(d->type & DATA_STOR) {
+				(d->type & DATA_STOR)) {
 					if (section_deletebad(d->name)) {
 
 				char *p;
