@@ -40,7 +40,7 @@ RUN mkdir ftp-logs
 RUN mkdir files
 
 COPY --from=builder /tmp/lundftpd/src/lundftpd /home/lundftpd/lundftpd
-COPY --from=builder /tmp/lundftpd/src/lundftpd.conf /home/lundftpd/ftp-data/lundftpd.conf
+COPY --from=builder /tmp/lundftpd/lundftpd.conf /home/lundftpd/ftp-data/lundftpd.conf
 COPY --from=builder /tmp/lundftpd.pem /home/lundftpd/ftp-data/lundftpd.pem
 
 RUN chown -R lundftpd /home/lundftpd
