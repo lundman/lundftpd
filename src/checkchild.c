@@ -115,19 +115,23 @@ checkchild_t *checkchild_addnode(unsigned int id, char *file, int type)
 	    printf("[checkchild %d] relocating..\n",
 		   getpid());
 
-	    memcpy( &checkchild_circular_list[ checkchild_start + 
+	    // The ranges overlap when the tail is longer than CHUNKSIZE,
+	    // so this must be memmove(), not memcpy().
+	    memmove( &checkchild_circular_list[ checkchild_start +
 					       CHECKCHILD_CHUNKSIZE ],
 		    &checkchild_circular_list[ checkchild_start ],
-		    sizeof(checkchild_t) * 
+		    sizeof(checkchild_t) *
 		    (checkchild_allocated - checkchild_start));
-	    
+
 	    checkchild_start += CHECKCHILD_CHUNKSIZE;
-	    
-	    if (checkchild_current)
-	      checkchild_current = &checkchild_circular_list[ checkchild_start ];
-	    
+
 	  }
-	  
+
+	  // realloc() may have moved the list, and current always points
+	  // at the start node, so re-point it whether we relocated or not.
+	  if (checkchild_current)
+	    checkchild_current = &checkchild_circular_list[ checkchild_start ];
+
 	  // Update allocated size.
 	  checkchild_allocated += CHECKCHILD_CHUNKSIZE;
 	  
@@ -432,13 +436,20 @@ int checkchild_init( lion_t *parent, void *user_data, void *arg )
 
 	while(!checkchild_quit) {
 
-	  lion_poll(0,1);
+	  // Don't sleep if there is work queued and nothing in progress.
+	  lion_poll(0, (!checkchild_current &&
+			(checkchild_start != checkchild_end)) ? 0 : 1);
 
-	  if (!checkchild_current)
+	  // Start the next node only when nothing is in progress. Internal
+	  // tests finish (and release) inside processnode, external tests
+	  // release when the tester exits. Calling processnode again while
+	  // an external test runs would spawn the tester again.
+	  if (!checkchild_current) {
 	    checkchild_assign_current();
-	  if (checkchild_current)
-	    checkchild_processnode();
-	  
+	    if (checkchild_current)
+	      checkchild_processnode();
+	  }
+
 	}
 
 	if (checkchild_start == checkchild_end)
@@ -485,6 +496,22 @@ int checkchild_init( lion_t *parent, void *user_data, void *arg )
 
 
 //
+// Release the current node, but only if it is the one this tester was
+// started for. Guards against a tester reporting twice (FAILED and EXIT),
+// which would otherwise release (skip) the next queued file untested.
+//
+static void checkchild_release_if_current(unsigned long id)
+{
+	if (!checkchild_current || (checkchild_current->id != id)) {
+		printf("[checkchild %d] tester %lu finished but is not current, ignoring\n",
+		       getpid(), id);
+		return;
+	}
+	checkchild_releasenode();
+}
+
+
+//
 // Handler for all spawned tester programs.
 //
 int checkchild_ext_handler( lion_t *handle,
@@ -509,7 +536,7 @@ int checkchild_ext_handler( lion_t *handle,
 		// Turn parent reading back on.
 		lion_enable_read(parent_handle);
 #endif
-		checkchild_releasenode();
+		checkchild_release_if_current(id);
 
 		break;
 
@@ -537,7 +564,7 @@ int checkchild_ext_handler( lion_t *handle,
 		printf("[checkchild] test %lu, duration %lu.\n",
 			   id, end - start);
 
-		checkchild_releasenode();
+		checkchild_release_if_current(id);
 		break;
 
 

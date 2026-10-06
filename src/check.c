@@ -445,6 +445,53 @@ checker_t *check_find( unsigned int id)
 
 
 
+//
+// SFV_TYPE_SFV or SFV_TYPE_MD5, for the "id:type:file" request to the child.
+//
+static int check_sfv_type(checker_t *node)
+{
+	// If we have a sfv filename, and it ends in md5
+	if (node->sfv_file_name &&
+		!lfnmatch("*.md5",  node->sfv_file_name, LFNM_CASEFOLD))
+		return SFV_TYPE_MD5;
+
+	// No sfv filename, is the expected value an MD5 (32 chars)?
+	if (node->expected_value &&
+		strlen(node->expected_value) == 32)
+		return SFV_TYPE_MD5;
+
+	return SFV_TYPE_SFV;
+}
+
+
+
+//
+// The helper child went away. If files are still queued, start a new
+// child and send them again (what SITE RESCAN +respawn does by hand).
+// Rate limited, so a file that kills the child cannot cause a loop.
+//
+static void check_child_lost(void)
+{
+	static time_t last_respawn = 0;
+	time_t now;
+
+	if (!checker_head)
+		return;
+
+	time(&now);
+	if (now - last_respawn < 60) {
+		consolef("[check] helper died again within a minute, not respawning."
+				 " Use SITE RESCAN +respawn.\n");
+		return;
+	}
+	last_respawn = now;
+
+	consolef("[check] helper lost with files queued, respawning: %d items\n",
+			 check_respawn());
+}
+
+
+
 int check_handler( lion_t *handle,
 				   void *user_data, int status, int size, char *line)
 {
@@ -458,18 +505,20 @@ int check_handler( lion_t *handle,
 	switch( status ) {
 
 	case LION_PIPE_FAILED:
-		consolef("[check] child lost: %s\n", line);
-		check_helper_handle = NULL;
-
-		// Maybe we want to restart it here, and re-issue the nodes?
-		break;
-
 	case LION_PIPE_EXIT:
-		consolef("[check] child has exited.\n");
+		if (status == LION_PIPE_FAILED)
+			consolef("[check] child lost: %s\n", line ? line : "");
+		else
+			consolef("[check] child has exited.\n");
+
+		// An old helper we already replaced (respawn) or are shutting
+		// down: nothing to do.
+		if (handle != check_helper_handle)
+			break;
 
 		check_helper_handle = NULL;
 
-		// Maybe we want to restart it here, and re-issue the nodes?
+		check_child_lost();
 		break;
 
 	case LION_PIPE_RUNNING:
@@ -569,8 +618,10 @@ int check_respawn(void)
   int count;
 
   if (check_helper_handle) {
-    lion_disconnect(check_helper_handle);
+    lion_t *old = check_helper_handle;
+    // Clear first, so check_handler() sees the old helper as stale.
     check_helper_handle = NULL;
+    lion_disconnect(old);
   }
   check_init();
   
@@ -586,7 +637,7 @@ int check_respawn(void)
     
     lion_printf(check_helper_handle, "%u:%u:%s\n",
 		runner->id,
-		0,
+		check_sfv_type(runner),
 		runner->disk_name);
   }
 
@@ -612,8 +663,10 @@ void check_free_helper(void)
 	FILE *ffd = NULL;
 
 	if (check_helper_handle) {
-		lion_disconnect(check_helper_handle);
+		lion_t *old = check_helper_handle;
+		// Clear first, so check_handler() does not respawn it.
 		check_helper_handle = NULL;
+		lion_disconnect(old);
 	}
 
 	// Only create the file if there is a need.
@@ -955,17 +1008,7 @@ int check_filebad(struct data_node *d)
 			//		 );
 
 			// SFV or MD5 type?
-			type = 0;
-
-			if (check_node->sfv_file_name &&
-				!lfnmatch("*.md5",  check_node->sfv_file_name,
-						  LFNM_CASEFOLD)) {
-				type = 1;
-			} else { // No sfv filename, does the CRC expected length be 32?
-				if (check_node->expected_value &&
-					strlen(check_node->expected_value) == 32)
-					type = 1;
-			}
+			type = check_sfv_type(check_node);
 
 			consolef("[check] sending request to %p '%u:%u:%s'\n",
 					 check_helper_handle,
