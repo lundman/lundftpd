@@ -214,6 +214,11 @@ void check_manual_scan(char *path)
 
 	ret = check_filebad(&d);
 
+	do {
+	  sleep(1);
+	  consolef("."); fflush(stdout);
+	} while (checker_head != NULL);
+
 	consolef("Completed with %d\n", ret);
 }
 
@@ -557,8 +562,50 @@ int check_init(void)
 	return 1;
 }
 
+int check_respawn(void)
+{
+  checker_t *runner, *next;
+  checker_t *newhead = NULL;
+  int count;
 
+  if (check_helper_handle) {
+    lion_disconnect(check_helper_handle);
+    check_helper_handle = NULL;
+  }
+  check_init();
+  
+  if (!check_helper_handle)
+    return -1;
 
+  // Technically this sends newest first to
+  // the child, but order isnt so important
+  // as long as it gets checked  
+  for (runner = checker_head, count = 0;
+       runner;
+       runner = runner->next, count++) {
+    
+    lion_printf(check_helper_handle, "%u:%u:%s\n",
+		runner->id,
+		0,
+		runner->disk_name);
+  }
+
+  // But we need to reverse the list here, so the 
+  // "current scanned" item will match. We could
+  // reverse list twice, but..
+  for (runner = checker_head;
+       runner;
+       runner = next) {
+
+    next = runner->next;
+    runner->next = newhead;
+    newhead = runner;
+
+  }
+  checker_head = newhead;
+
+  return (count);
+}
 
 void check_free_helper(void)
 {
@@ -609,63 +656,88 @@ void check_free_helper(void)
 //
 int check_filebad(struct data_node *d)
 {
-	int type;
-	struct check_node *c;
-	checker_t *check_node, *runner;
+  int type;
+  struct check_node *c;
+  checker_t *check_node, *runner;
+  struct sfv_state *ss = NULL;
 
+  consolef("[check] %s: '%s'\n", __func__,
+	   d->name);
 
-	// Handle new SFV files.
-	if (!lfnmatch("*.sfv",  d->name, LFNM_CASEFOLD)
+  // Handle new SFV files.
+  if (!lfnmatch("*.sfv",  d->name, LFNM_CASEFOLD)
 #ifdef WITH_SSL
-		|| !lfnmatch("*.md5",  d->name, LFNM_CASEFOLD)
+      || !lfnmatch("*.md5",  d->name, LFNM_CASEFOLD)
 #endif
-		) {
-		struct sfv_state *ss = NULL;
+      ) {
 
-		if (!sfv_state_load(d->name))
-			ss = sfv_file_load(d->name);
-
-		// Backcheck
-		if (ss) {
-
-			char tmp[MAX_PATHLEN];
-			struct sfv_state_entry *sse;
-
+    if (d->type & DATA_CLEANSFV)
+      sfv_state_clean(d->name);
+	  
+    // if (!sfv_state_load(d->name))
+    ss = sfv_state_load(d->name);
+    if (!ss)
+      ss = sfv_file_load(d->name);
+	  
+    // Backcheck
+    if (ss) {
+      char tmp[MAX_PATHLEN];
+      struct sfv_state_entry *sse;
+	    
 #ifdef IRCBOT
-			if (d->login && section_racestats(ss->path) &&
-				section_announce(ss->path)) {
-
-				irc_announce("SFV|section=%s|dir=%s|fname=%s|user=%s|count=%d\n",
-							 section_name(ss->path), section_rlsfind(ss->path),
-							 ss->filename, d->login->user, ss->count);
-			}
+      if (d->login && section_racestats(ss->path) &&
+	  section_announce(ss->path)) {
+	      
+	irc_announce("SFV|section=%s|dir=%s|fname=%s|user=%s|count=%d\n",
+		     section_name(ss->path), section_rlsfind(ss->path),
+		     ss->filename, d->login->user, ss->count);
+      }
 #endif
+	    
+      for (sse = ss->entry; sse; sse = sse->next) {
+	      
+	snprintf(tmp, MAX_PATHLEN, "%s/%s", ss->path, sse->filename);
+	      
+	// File exists and hasn't been checked, backcheck!
+	if (!(sse->status & SFV_OK) && !access(tmp, F_OK)) {
+		
+	  struct data_node dummy;
+	  struct stat stbf;
 
-			for (sse = ss->entry; sse; sse = sse->next) {
-
-				snprintf(tmp, MAX_PATHLEN, "%s/%s", ss->path, sse->filename);
-
-				// File exists and hasn't been checked, backcheck!
-				if (!(sse->status & SFV_OK) && !access(tmp, F_OK)) {
-
-					struct data_node dummy;
-
-					bzero(&dummy, sizeof(struct data_node));
-					dummy.name = strdup(tmp);
-					dummy.login = d->login;
-					// Don't award credits
-					dummy.bytes = 0;
-					consolef("[check] Backchecking %s...\n", path2file(dummy.name));
-					check_filebad(&dummy);
-                }
-
-            }
-
-		} // Backcheck
-
-		return 1;
+	  bzero(&dummy, sizeof(struct data_node));
+	  dummy.name = strdup(tmp);
+	  dummy.login = d->login;
+	  // Don't award credits
+	  dummy.bytes = 0;
+	  if (stat(tmp, &stbf) == 0)
+	    dummy.bytes = stbf.st_size;
+	  
+	  /*
+	   * Let's try to open the backcheck file here, with
+	   * exclusive, so we can skip files currently being
+	   * uploaded. They will test when upload completes.
+	   */
+	  connection_t *file;
+	  file = lion_open(tmp, O_WRONLY, 0444,
+		LION_FLAG_EXCLUSIVE, NULL);
+	  if (file != NULL) {
+	    lion_disconnect(file);
+	    consolef("[check] Backchecking %s...\n", path2file(dummy.name));
+	    check_filebad(&dummy);
+	  }
 	}
+	      
+      }
 
+    } else {  // Backcheck
+	    consolef("[check] sfv load failed\n");
+	    return 1;
+	  }
+
+    // It was a .sfv file - nothing more to do.
+    return 0;
+  }
+	
 #if 0
   if (!lfnmatch( "*.diz", check_node->name, LFNM_CASEFOLD)) {
 	  check_loaddiz( d );
@@ -673,12 +745,26 @@ int check_filebad(struct data_node *d)
   }
 #endif
 
-
-
+  // Handle files, not *.sfv
+  // Call makenode first, it will split the
+  // filename and dir for us.
   check_node = check_makenode( d );
 
   if (!check_node)
 	  return 0;
+
+  // Do we have a sfv for this file to start with?
+  // if ((sfv_state = sfv_state_find(sfilename, path))) {
+
+  ss = sfv_state_find(check_node->file_name, check_node->dir_name);
+  if (!ss) {
+    consolef("[check] no sfv yet, no checking\n");
+    // Release makenode
+    check_releasenode(check_node);
+    return 0;
+  }
+
+  consolef("[check] sfv exists, proceeding\n");
 
 
   // Lets loop through the list of pending tests and see if this file is
@@ -732,16 +818,19 @@ int check_filebad(struct data_node *d)
 #endif
 
 
-   if (server_maxsizecheck && (check_node->bytes >=
-							   ((lion64u_t)server_maxsizecheck
-								* 1048576))) {
-
-	   if (d->login && d->login->handle)
-	   socket_print(d->login, "226-Archive greater than %dMB, skipping tests\r\n", server_maxsizecheck);
-
-	   check_return(check_node, NULL);
-
-	   return 0;
+  if (server_maxsizecheck && (check_node->bytes >=
+			      ((lion64u_t)server_maxsizecheck
+			       * 1048576))) {
+    
+    if (d->login && d->login->handle &&
+	(d->status & ST_SEND_226))
+      socket_print(d->login, 
+		   "226-Archive greater than %dMB, skipping tests\r\n", 
+		   server_maxsizecheck);
+    
+    check_return(check_node, NULL);
+     
+    return 0;
 
   }
 
@@ -892,14 +981,15 @@ int check_filebad(struct data_node *d)
 
 
 			// We only do background testing now?
-			if (d->login && d->login->handle) {
+			if (d->login && d->login->handle &&
+			    (d->status & ST_SEND_226)) {
 
-				if (server_backgroundtest)
-					socket_print(d->login,
-								 "226-Background archive testing started.\r\n");
-				else
-					socket_print(d->login,
-								 "226-Testing archive, please wait...\r\n");
+			  if (server_backgroundtest)
+			    socket_print(d->login,
+				 "226-Background archive testing started.\r\n");
+			  else
+			    socket_print(d->login,
+				 "226-Testing archive, please wait...\r\n");
 
 			}
 
@@ -913,11 +1003,11 @@ int check_filebad(struct data_node *d)
 
 	// extention was not found.
 
-	if (d->login && d->login->handle)
-		socket_print(d->login,
-					 "226-Unkown archive extension, skipping tests.\r\n");
-
-
+	if (d->login && d->login->handle &&
+	    (d->status & ST_SEND_226))
+	  socket_print(d->login,
+		       "226-Unkown archive extension, skipping tests.\r\n");
+	
 	check_releasenode(check_node);
 
 	return 2; /* UNKNOWN EXTENSION! */

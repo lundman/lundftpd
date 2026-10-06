@@ -288,40 +288,40 @@ int login_statlist_handler( lion_t *handle,
 
 	// Here, user_data can be NULL for CONNECTED, but otherwise it should
 	// be our login node.
-    consolef("[login] statlist: received event %d\n", status);
+	//    consolef("[login] statlist: received event %d\n", status);
 
 	switch( status ) {
 
 	case LION_INPUT:
 		if (t && line) {
-            consolef("[login] statlist: %p : %s\n",
-                     t, line);
+		  //  consolef("[login] statlist: %p : %s\n",
+                  //   t, line);
 
-            if (*line == ':') {
-                // reply from dirlist
+	    if (*line == ':') {
+	      // reply from dirlist
 
-                // Dirlist starting, skip line
-                if (line[1] == '0') break;
+	      // Dirlist starting, skip line
+	      if (line[1] == '0') break;
 
-                // Dirlist finished
-                if (!strcmp(line, ":END"))
-                    consolef("[login] statlist finished, resuming normal ops...\n");
-                else
-                    consolef("[login] dirlist said no\n");
+	      // Dirlist finished
+	      if (!strcmp(line, ":END")) 
+                consolef("[login] statlist finished, resuming normal ops...\n");
+	      else 
+		consolef("[login] dirlist said no\n");
+	      
+	      lion_printf(t->handle, "213 End of status\r\n");
+	      
+	      if (t->handle) {
+		lion_enable_read(t->handle);
+		lion_set_handler(t->handle, login_handler);
+		return 0;
+	      }
 
-                lion_printf(t->handle, "213 End of status\r\n");
-
-                if (t->handle) {
-                    lion_enable_read(t->handle);
-                    lion_set_handler(t->handle, login_handler);
-                    return 0;
-                }
-
-            } // is colon
-
-            lion_printf(t->handle, " %s\r\n", line);
-        } // t or line
-        break;
+	    } // is colon
+	    
+	    lion_printf(t->handle, " %s\r\n", line);
+		} // t or line
+	    break;
 
 	case LION_CONNECTION_LOST:
 	case LION_CONNECTION_CLOSED:
@@ -1753,7 +1753,7 @@ void login_cwd(struct login_node *t, char *args)
 
 	file_undot(path);
 
-	//consolef("[CWD] Straight to CD...\n");
+	//	consolef("[CWD] Straight to CD...\n");
 
 
 	// remote-slave section, if so, relay whatever we eventually will try
@@ -1903,19 +1903,20 @@ void login_noop(struct login_node *t, char *args)
 
 void login_stat(struct login_node *t, char *args)
 {
-	time_t tt;
-	int an;
-    struct data_node *d;
-	static char args2[1024], path[1024];  // BUFFER!!
+  time_t tt;
+  int an;
+  struct data_node *d;
+  static char args2[1024], path[1024];  // BUFFER!!
 
-	consolef("login_stat(%p): %s\n", t->handle, args);
+  consolef("login_stat(%p): %s\n", t->handle, args);
 
+  if (t->handle == NULL)
+    return;
 
+  // No arguments mean we just send STAT.
+  if (!args || !*args) {
 
-    // No arguments mean we just send STAT.
-	if (!args || !*args) {
-
-        time(&tt);
+    time(&tt);
 
         /*
          *
@@ -1983,8 +1984,9 @@ void login_stat(struct login_node *t, char *args)
 
 	d = data_list(t, args2, path);
 
-    t->port_host = 0;
-    t->port_port = 0;
+	t->port_host = 0;
+	t->port_port = 0;
+
 
 	if (!d) {
 
@@ -1997,10 +1999,9 @@ void login_stat(struct login_node *t, char *args)
     lion_printf(t->handle, "213-Status of %s:\r\n", path);
 
     lion_set_handler(t->handle, login_statlist_handler);
-    dirlist_list(t->handle, d->name, "" /*d->list_precat*/,
+    dirlist_list(t->handle, d->name, ""/*d->list_precat*/,
                  d->sort_by | DIRLIST_PIPE | DIRLIST_USE_CRNL,
                  t);
-
 
     data_close(d);
 

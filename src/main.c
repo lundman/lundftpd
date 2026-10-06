@@ -74,7 +74,7 @@ static char *dupelist_pattern = NULL;
 static unsigned long dupelist_age = 0;
 
 static int main_daemon = 1;
-
+static char *manual_scan = NULL;
 
 /* If we are behind dynamic IP situations and the user can pass the
    real external IP for incomming connections (passive) let them do
@@ -235,7 +235,7 @@ void args_load(int argc, char **argv)
 			break;
 #endif
 		case 'c':
-			check_manual_scan(optarg);
+			SAFE_COPY(manual_scan, optarg);
 			break;
 
 
@@ -539,6 +539,13 @@ int main(int argc, char **argv)
 
 
 #endif
+
+	if (manual_scan) {
+	  check_manual_scan(manual_scan);
+	  user_close();
+	  quota_quit();
+	  exit(0);
+	}
 
 	login_listen();
 

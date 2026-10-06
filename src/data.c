@@ -432,7 +432,9 @@ int data_list_handler( lion_t *handle,
 
 			// We also delete the file here, yep. If the open was successful
 			// it will be deleted when it is finally closed.
+			//file_goroot();
 			remove( &line[3] );
+			//file_gononroot();
 
 			return 0;
 		}
@@ -513,8 +515,15 @@ int data_handler( lion_t *handle,
 			// BUG 2004:12:17 - ONLY delete the file if we were an
 			// UPLOAD. Classic, wiping files randomly.
 			if (d->name && *d->name &&
-				(d->type & DATA_STOR)) {
-					if (section_deletebad(d->name)) {
+			    (d->type & DATA_STOR)) {
+
+			  log_xfer("TEST %s (lost) debug_deletebad %s\n",
+				   d->login ? d->login->user : "(null)",
+				   d->name ? d->name : "");
+
+
+
+			  if (section_deletebad(d->name)) {
 
 				char *p;
 
@@ -523,8 +532,8 @@ int data_handler( lion_t *handle,
 				// or stor sent)? Do we always wipe all files, or just non-
 				// free?
 				log_xfer("TEST %s (partial) debug_deletebad %s\n",
-						 d->login ? d->login->user : "(null)",
-						 d->name);
+					 d->login ? d->login->user : "(null)",
+					 d->name?d->name:"");
 
 				remove(d->name);
 #ifdef RACESTATS
@@ -532,14 +541,18 @@ int data_handler( lion_t *handle,
 				race_file_deleted(d->name, p);
 				pathfixsplit(d->name, p);
 #endif
-			} else {
-				// File failed, make it writable by others
-				file_goroot();
-				chmod(d->name, (mode_t) 0666);
-				file_gononroot();
-				}
+			  } else {   
+			    // File failed, make it writable by others      
+			    file_goroot();
+			    chmod(d->name, (mode_t) 0666);                  
+			    file_gononroot();
+			  }                                               
 
 			} else {
+
+			  log_xfer("TEST %s (update1) debug_deletebad %s\n",
+				   d->login ? d->login->user : "(null)",
+				   d->name ? d->name : "");
 
 				// Update the bytes counter stats. Needs to be done while we
 				// still have a reference to d->handle.
@@ -563,14 +576,22 @@ int data_handler( lion_t *handle,
 				 handle); // printing ->bytes here can core.
 		if (d) {
 
-			// Update the bytes counter stats. Needs to be done while we
-			// still have a reference to d->handle.
-			data_update_stats(d);
+		  if (d->type & DATA_STOR) {
 
-			// Old place to call file checking.
+		    log_xfer("TEST %s (update2) debug_deletebad %s (226 %d?)\n",
+			     d->login ? d->login->user : "(null)",
+			     d->name ? d->name : "",
+			     d->status & ST_SEND_226);
 
-			d->handle = NULL; // it's closed, don't call close below.
-			data_close( d );
+		    // Update the bytes counter stats. 
+		    // Needs to be done while we
+		    // still have a reference to d->handle.
+		    data_update_stats(d);
+		  }
+
+		  // Old place to call file checking.
+		  d->handle = NULL; // it's closed, don't call close below.
+		  data_close( d );
 		}
 		break;
 
@@ -618,17 +639,22 @@ int data_handler( lion_t *handle,
 
 			consolef("[data] data close hack\n");
 
+		  if (d->type & DATA_STOR)
+
+		    log_xfer("TEST %s (securefail) debug_deletebad %s\n",
+			     d->login ? d->login->user : "(null)",
+			     d->name ? d->name : "");
+
 			// This should take care of decrementing active_retr etc.
 			data_update_stats(d);
 
 			// We remote STOR so we don't enter check_isbad code.
-			// We remove STOR so we don't enter check_isbad code.
 			if (d->type & DATA_STOR) {
-				d->type &= ~DATA_STOR;
-				if (d->name) {
-					consolef("Deleting file: '%s'\n", d->name);
-					remove(d->name);
-				}
+			  d->type &= ~DATA_STOR;
+			  if (d->name) {
+			    consolef("Deleting file: '%s'\n", d->name);
+			    remove(d->name);
+			  }
 			}
 
 			lion_disconnect(d->handle);
@@ -877,6 +903,7 @@ void data_connected(struct data_node *d)
         if (d->althandle) {
             consolef("[data] STOR ready, enable data read\n");
             if (d->handle) lion_enable_read(d->handle);
+	    //            if (d->handle) lion_enable_trace(d->handle);
             return;
         }
 
@@ -896,14 +923,20 @@ void data_connected(struct data_node *d)
 			file_stor(d, FILE_OLD);
 
 		if (!d->althandle) {
-			lion_disconnect(d->handle);
-			return; // It failed.
+		  d->type &= ~DATA_STOR; // no check_file
+		  lion_disconnect(d->handle);
+		  return; // It failed.
 		}
 
 		// Success. Ready open the load.
 		lion_set_handler(d->althandle, data_file_write_handler);
 
 		lion_disable_read(d->althandle); // Was handle?!
+
+		// 20260323 testing new code, chmod 500 when
+		// transfer starts
+		if (d && d->name)
+		  chmod(d->name, (mode_t) 0500);
 
 	}
 
@@ -965,10 +998,15 @@ void data_close(struct data_node *d)
 	struct data_node *curr, *last = NULL;
 	struct login_node *send226 = NULL;
 	lion_t *holder;
-
+	int had_handle = 0;
+	bytes_t bytes = 0;
 
 	consolef("data_close(%p): closing %d\n", d->handle, d->status);
 
+	log_xfer("TEST %s (close) %s : status 0x%x handle %p type %d\n",
+		 d->login ? d->login->user : "(null)",
+		 d->name ? d->name : "",
+		 d->status, d->handle, d->type);
 
 	if (d->login) {
 
@@ -993,6 +1031,12 @@ void data_close(struct data_node *d)
 
 		if (d->handle) {
 
+		  lion_get_bytes(d->handle, &bytes, NULL);
+	
+		  log_xfer("TEST %s (update3) debug_deletebad %s\n",
+			   d->login ? d->login->user : "(null)",
+			   d->name ? d->name : "");
+
 			// The handler will only call this if user_data is set
 			// but since data_close was called first, we set it to
 			// NULL so it wouldn't be called upstairs.
@@ -1015,25 +1059,30 @@ void data_close(struct data_node *d)
 	}
 
 
-	if (d->status & ST_SEND_226) {
+	// More the 226 check into check.c
+	//	if (d->status & ST_SEND_226) {
 
 
 		// Send 226 means that the transfer was actually started, and not
 		// rejected due to file permissions, or dupe db existince.
 
 		// If it was a stor, and since we cleanly closed, maybe check.
-		if ((d->type & DATA_STOR) &&
-			section_filecheck(d->name)) {
+       	if (/*bytes > 0 &&*/
+		    (d->type & DATA_STOR) &&
+		    section_filecheck(d->name)) {
 
 #ifdef RACESTATS
-			if (d->login->options & (UO_XDUPE_2|UO_XDUPE_3))
-				race_xdupe(NULL, d->login, 226, d->name);
+			if (d->login->options & (UO_XDUPE_2|UO_XDUPE_3) &&
+			    (d->status & ST_SEND_226))
+			  race_xdupe(NULL, d->login, 226, d->name);
 #endif
 
 			check_filebad( d ); // "d" is released after this call.
+			
 		}
 
-		send226 = d->login;
+	if (d->status & ST_SEND_226)
+	  send226 = d->login;
 
 		// If we send 226, it might see login is gone, which calls login_exit,
 		// which calls data_close, which gets us here, with a data node that
@@ -1041,7 +1090,7 @@ void data_close(struct data_node *d)
 
 		d->status &= ~ST_SEND_226;
 
-	}
+		//	}
 
 
 	// This code is never used.
@@ -1487,7 +1536,7 @@ struct data_node *data_list(struct login_node *t, char *args, char *path2)
 
 
     // No more work needed for STATLIST.
-    if (t->status&ST_STATLIST)
+    if (t->status & ST_STATLIST)
         return nd;
 
 
@@ -1557,6 +1606,7 @@ struct data_node *data_retr(struct login_node *t, char *args)
 		if ((int) ((struct quota_node *)t->quota)->num_active_retr < 0)
 			((struct quota_node *)t->quota)->num_active_retr = 0;
 
+#if 0
 		if (((struct quota_node *)t->quota)->num_active_retr >= t->num_downloads) {
 
 
@@ -1574,6 +1624,7 @@ struct data_node *data_retr(struct login_node *t, char *args)
 			return NULL;
 
 		}
+#endif
 	}
 
 
@@ -1626,6 +1677,7 @@ struct data_node *data_stor(struct login_node *t, char *args, int flags)
 		if ((int) ((struct quota_node *)t->quota)->num_active_stor < 0)
 			((struct quota_node *)t->quota)->num_active_stor = 0;
 
+#if 0
 		if (((struct quota_node *)t->quota)->num_active_stor >= t->num_uploads) {
 
 			/* If we're in passive, remove the data node */
@@ -1643,6 +1695,7 @@ struct data_node *data_stor(struct login_node *t, char *args, int flags)
 			return NULL;
 
 		}
+#endif
 	}
 
 	if (!(nd = data_init(t, 0)))
@@ -1678,6 +1731,7 @@ struct data_node *data_stor(struct login_node *t, char *args, int flags)
 	  file_stor(nd, FILE_OLD);
 
 	if (!nd->althandle) {
+	  nd->type &= ~DATA_STOR; // no check_file
 	  lion_disconnect(nd->handle);
 	  return NULL; // It failed.
 	}

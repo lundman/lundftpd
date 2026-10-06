@@ -149,5 +149,6 @@ void          check_stats         ( struct login_node * );
 void          check_extractimdb   ( checker_t * );
 void          check_resume        ( void );
 void          check_manual_scan   ( char * );
+int           check_respawn       ( void );
 
 #endif

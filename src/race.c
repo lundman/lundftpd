@@ -119,14 +119,22 @@ char *race_who(struct race *race)
 	for (racer = race->top_racer; racer; racer = racer->next) {
 
 		if (who) {
-			if ((newwho = malloc(strlen(who) + strlen(racer->who) + strlen(racer->group) + 2)) == NULL)
-				abort();
-			sprintf(newwho, "%s %s@%s", who, racer->who, racer->group);
-			free(who);
+		  int newsize;
+		  newsize = strlen(who) + strlen(racer->who) + strlen(racer->group) + 3;
+		  newwho = malloc(newsize);
+		  if (newwho == NULL)
+		    abort();
+		  snprintf(newwho, newsize, "%s %s@%s", 
+			   who, racer->who, racer->group);
+		  free(who);
 		} else {
-			if ((newwho = malloc(strlen(racer->who) + strlen(racer->group) + 2)) == NULL)
-				abort();
-			sprintf(newwho, "%s@%s", racer->who, racer->group);
+		  int newsize;
+		  newsize = strlen(racer->who) + strlen(racer->group) + 3;
+		  newwho = malloc(newsize);
+		  if (newwho == NULL)
+		    abort();
+		  snprintf(newwho, newsize, "%s@%s", 
+			   racer->who, racer->group);
 		}
 		who = newwho;
 	}

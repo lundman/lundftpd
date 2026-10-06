@@ -2492,6 +2492,7 @@ int site_rescan_sub(const char *name, void *arg)
 	memset(&dummy, 0, sizeof(dummy));
 
 	dummy.name = (char *)name;
+	dummy.type |= DATA_CLEANSFV;
 
 	check_filebad(&dummy);
 
@@ -2534,6 +2535,18 @@ void login_site_rescan(struct login_node *t, char *args)
 		lion_printf(t->handle, "200 SITE ReScan\r\n");
 		return;
 
+	}
+
+	if (!strcmp(pat, "+respawn")) {
+	  int count;
+	  consolef("[site] rescan +respawn\n", pat);
+	  count = check_respawn();
+	  if (count < 0)
+	    lion_printf(t->handle, "200 SITE Respawn failed\r\n");
+	  else
+	    lion_printf(t->handle, "200 SITE Respawn, %d items\r\n",
+			count);
+	  return;
 	}
 
 	consolef("[site] rescan '%s'\n", pat);
@@ -2603,6 +2616,9 @@ void login_site_request(struct login_node *t, char *args)
 
 	consolef("Picked section '%s'\n", section);
 
+	// skip "s" in "requests"
+	if (*ar == 's')
+	  ar++;
 
 	// If no arguments, lists current requests.
 	// If arguments, create a new request.

@@ -14,6 +14,7 @@
 #define DATA_APPE      256    /* This to call APPE not STOR */
 #define DATA_TLS       512    /* Have we called SSL yet? */
 #define DATA_WANTCONNECTED 1024 /* Call data_connected for node */
+#define DATA_CLEANSFV 2048 /* Delete sfv statefile (site rescan) */
 #define DATA_QUEUE     0x8000
 
 #define DATA_SORT_NAME 1

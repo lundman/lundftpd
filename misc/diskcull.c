@@ -43,6 +43,10 @@ extern __const char *__const sys_errlist[];
 #include <sys/statfs.h>
 #endif
 
+#if !defined _SGI_SOURCE && !defined _OSF_SOURCE
+#include <sys/statvfs.h>
+#endif
+
 #if defined ( LINUX ) || ( HPUX )
 #include <sys/vfs.h>
 #endif
@@ -100,7 +104,10 @@ device /ace
 // wipe someone's entire system because they have not setup the right
 // configuration.
 //
-//#define HARMLESS      /* don't actually call rm ! */
+// gcc -DNO_HARMLESS to arm it.
+#ifndef NO_HARMLESS
+#define HARMLESS      /* don't actually call rm ! */
+#endif
 
 //#define PAUSE_B4_RM
 
@@ -540,21 +547,19 @@ adjust_total_blocks(char *path, fsblkcnt64_t *total,
 
 int enough_diskspace_full(struct delete_entry_struct *device)
 {
-#if defined __sun__
-  struct statvfs sfsb;
-#else
+#if defined _SGI_SOURCE || defined _OSF_SOURCE
   struct statfs sfsb;
+#else
+  struct statvfs sfsb;  // f_frsize is in statvfs on all modern systems
 #endif
-  unsigned long long free, avail, used, blksiz, total;
+  unsigned long long free, avail, used, bsize, total;
   
 #ifdef _SGI_SOURCE
   if (statfs(device->device, &sfsb, sizeof(struct statfs), 0)) {
 #elif defined _OSF_SOURCE
   if (statfs(device->device, &sfsb, sizeof(struct statfs))) {
-#elif defined __sun__
-  if (statvfs(device->device, &sfsb)) {
 #else
-  if (statfs(device->device, &sfsb)) {
+  if (statvfs(device->device, &sfsb)) {
 #endif
     perror("stat()");
     printf("FATAL: Failed to stat root-device '%s'!\n", device->device);
@@ -562,20 +567,16 @@ int enough_diskspace_full(struct delete_entry_struct *device)
   }
 
 
-  used = (unsigned long long) sfsb.f_blocks - sfsb.f_bfree;
-#if defined (_SGI_SOURCE)
-  blksiz = sfsb.f_bsize;
-  free = (unsigned long long) sfsb.f_bfree * blksiz;
-  avail = used + (unsigned long long) sfsb.f_bfree;
-#elif defined (__sun__)
-  blksiz = sfsb.f_bsize;
+#if defined (__sun__)
+  bsize = sfsb.f_bsize;
 
   // avail is available block in totoal, ie, the TOTAL size
-  total = sfsb.f_blocks * (unsigned long long) blksiz;
-  //free  = sfsb.f_bfree  * (unsigned long long) blksiz;
-  free  = sfsb.f_bavail * (unsigned long long) blksiz;
-  avail = sfsb.f_blocks * (unsigned long long) blksiz;
+  total = sfsb.f_blocks * (unsigned long long) bsize;
+  free  = sfsb.f_bavail * (unsigned long long) bsize;
+  avail = sfsb.f_blocks * (unsigned long long) bsize;
+  used  = (unsigned long long) (sfsb.f_blocks - sfsb.f_bfree) * bsize;
 
+  // ZFS: bound the size by any dataset quotas.
   {
     fsblkcnt64_t atotal, aused;
     adjust_total_blocks(device->device, &atotal, &aused, 1);
@@ -586,74 +587,76 @@ int enough_diskspace_full(struct delete_entry_struct *device)
     free = total - used;
   }
 
-  //used  = avail - free; 
   //rpool/disk02    available       1693308928      -
   //rpool/disk02    used    553431214080    -
   //rpool/disk02    quota   555124523008    local
   //root@backup:~/lftpd# 555124523008 - 553431214080 = 1693308928
   // atotal 555124523008, aused 1927653861376
 
-
-
   printf("total %llu: free %llu: avail %llu: used %llu. percent used %u\n",
 	 total, free, avail, used,
 	 (unsigned int)((used * 100) / avail));
 
-
-#elif defined (_OSF_SOURCE)
-  blksiz = 1024;
-  free = sfsb.f_bavail * (unsigned long long) blksiz;
-  avail = sfsb.f_blocks;
 #else
-  blksiz = sfsb.f_bsize;
-  free = (unsigned long long) sfsb.f_bavail * blksiz;
-  avail = used + (unsigned long long) sfsb.f_bavail;
-  avail = avail * sfsb.f_bsize / blksiz;  // block size isn't always 1024.
+
+#if 0
+  unsigned long   f_bsize;  /* system block size */
+  unsigned long   f_frsize; /* system fundamental block size */
+  unsigned long   f_iosize; /* optimal file system block size */
+
+  fsblkcnt_t      f_blocks; /* number of blocks in file system */
+  fsblkcnt_t      f_bfree;  /* free blocks avail in file system */
+  fsblkcnt_t      f_bavail; /* free blocks avail to non-root */
+
+
+/dev/cgd14a 118372502 110971271   1482606    98%    /disk15
+   $7 = {f_flag = 2214596608, f_bsize = 8192, f_frsize = 1024, f_iosize = 8192,
+	 f_blocks = 118372502, f_bfree = 7401231, f_bavail = 1482606,
+	 f_bresvd = 5918625, f_files = 29477886, f_ffree = 29468763,
+
+	 We do not use bsize on most systems. If defined, use frsize!
+	 
 #endif
 
-#if 1
-  printf("bavail %lu and bsize %lu\n",
-		 (unsigned long) sfsb.f_bavail,
-		 (unsigned long) sfsb.f_bsize);
+#if defined (_SGI_SOURCE) || defined (_OSF_SOURCE)
+  bsize = sfsb.f_bsize;
+#else
+  bsize = sfsb.f_frsize;
 #endif
 
+  // used, in bytes. totalblocks - availableBlocksToNonRoot
+  used = (unsigned long long) (sfsb.f_blocks - sfsb.f_bavail)
+	 * bsize;
+
+  free = (unsigned long long) sfsb.f_bavail * bsize;
+  avail = (unsigned long long) (sfsb.f_blocks * bsize);
+  total = avail;
+
+#endif
 
 
   /* Fill in our variables if this is first time */
   if (!device->full_total) {
-    device->full_total = total;
-    device->full_used = used;
-    device->full_free = avail;
+    device->full_total = total; // total avail block in whole fs
+    device->full_used = used;   // amount of bytes used
+    device->full_free = free;   // total-avail - used = free
   }
 
   if (verbose)
-#if defined ( IRIX ) || defined ( HPUX ) || defined (_SGI_SOURCE) || defined(__sun__)
-    printf("'%s' %llu free %llu total, percent %ld%%\n", 
-	   device->device, free/blksiz, avail,
-	   (unsigned int)((used * 100) / avail));
-#elif defined (_OSF_SOURCE)
-    printf("'%s' %lu free %lu total, percent %u%%\n", 
-	   device->device, free/blksiz, avail,
-	   (unsigned int)used * 100 / avail);
-#else
-    printf("'%s' %qu free %qu total, percent %lu%%\n", 
-	   device->device, free/blksiz, avail,
-	   (unsigned long)(used * 100 / avail));
-#endif
+    printf("'%s' %lluMb free %lluMb total, percent %llu%%\n",
+	   device->device, free/1024/1024, avail/1024/1024,
+	   (used * 100 / avail));
 
-    printf("if ((%llu full_bytes && (%llu free >= %llu full_bytes)) &&" 
-	   "((%llu free) <= %llu avail)) return 1;\n",
-	   device->full_bytes,free,device->full_bytes,free/blksiz,avail);
 
   if ((device->full_bytes && (free >= device->full_bytes)) && 
       ((free) <= avail)) return 1;
 
-  if (device->full_percent && (((used * 100) / avail) <= device->full_percent))
+  if (device->full_percent && ((used * 100 / avail) <= device->full_percent))
     return 1;
 
   if (!device->full_bytes && !device->full_percent) 
     return 1; /*Just incase someone does something dumb*/
-  printf("returning 0 (should delete)\n");
+
   return 0;
 
 }

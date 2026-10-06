@@ -94,7 +94,10 @@ struct sfv_state *sfv_file_load(char *pathfile)
 
 	// Actually not true.. if string is vastly larger than work buffers can
 	// hold.
-	if (!tmp) return NULL;
+	if (!tmp) {
+	  consolef("[check] split '%s' has no last '.'\n", split);
+	  return NULL;
+	}
 
 
 	// SFV style file:
@@ -102,7 +105,7 @@ struct sfv_state *sfv_file_load(char *pathfile)
 	// MD5 style file:
 	// "07af6fa19606b2932e7260a5bf718396 *vx-die.hard.4.0.r03"
 
-
+	consolef("[check] reading state\n");
 
 	*tmp = 0;
 	snprintf(sfv_state->statefilename, 255, ".state-%s", split);
@@ -273,7 +276,7 @@ void sfv_incomplete(char *state_path, int method)
 	section_t *rootsect;
 	int k;
 
-	consolef("[sfv] checking is section has incompletes..\n");
+	consolef("[sfv] checking if section has incompletes..\n");
 
 	rootsect = section_find(state_path);
 
@@ -449,8 +452,6 @@ void sfv_state_save(struct sfv_state *sfv_state)
 
                 }
 
-
-
         }
 #endif
 
@@ -545,15 +546,16 @@ struct sfv_state *sfv_state_load(char *pathfile)
 
 
 	// If SFV state is already in memory, just return.
-	if (sfv_state_find(sfilename, path))
-		return NULL;
-
-
-
+	if ((sfv_state = sfv_state_find(sfilename, path))) {
+	  consolef("[sfv] in memory\n");
+	  return NULL;
+	}
 
 	// Open the file.
-	if ((fp = fopen(sfilepath, "rb")) == NULL)
-		return NULL;
+	if ((fp = fopen(sfilepath, "rb")) == NULL) {
+	  consolef("[sfv] failed to open\n");
+	  return NULL;
+	}
 
 	// Allocate new struct
 	if (!(sfv_state = malloc(sizeof(struct sfv_state)))) {
@@ -561,6 +563,8 @@ struct sfv_state *sfv_state_load(char *pathfile)
 		abort();
 		_exit(-1);
 	}
+
+
 	bzero(sfv_state, sizeof(struct sfv_state));
 
 	// Read contents into SFV structure
@@ -601,7 +605,6 @@ struct sfv_state *sfv_state_load(char *pathfile)
 
 	// Generally, it is recommended to free the file
 	fclose(fp);
-
 
 	return sfv_state;
 

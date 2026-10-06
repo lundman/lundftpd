@@ -1807,6 +1807,9 @@ void file_free(struct login_node *t, char *s, int num)
 
 	/* This function is strange? */
 
+	if (!s)
+		return;
+
 	if (strncmp(s, server_usechroot, strlen(server_usechroot)))
 		sprintf(path, "%s/%s/.", server_usechroot, s);
 	else

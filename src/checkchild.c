@@ -47,7 +47,7 @@ struct check_node *check_node_head = NULL;
 #endif
 
 
-//#define LOG_TO_FILE "checkchild.log"
+// #define LOG_TO_FILE "/var/tmp/checkchild.log"
 
 static THREAD_SAFE int checkchild_quit = 0;
 static THREAD_SAFE lion_t *parent_handle = NULL;
@@ -88,47 +88,49 @@ checkchild_t *checkchild_addnode(unsigned int id, char *file, int type)
 
 	// Do we need to allocate more space ?
 	if (!checkchild_circular_list ||
-		(checkchild_end + 1 == checkchild_start) ||
-		((!checkchild_start) && (checkchild_end + 1 == checkchild_allocated))){
+	    (checkchild_end + 1 == checkchild_start) ||
+	    ((!checkchild_start) && (checkchild_end + 1 == checkchild_allocated))){
 		
-		// Yep
+	  // Yep
 
-		printf("[checkchild] allocating space %d nodes\n",
-			   checkchild_allocated);
+	  printf("[checkchild %d] allocating space %d nodes\n",
+		 getpid(),
+		 checkchild_allocated);
 
-		newd = (checkchild_t *) realloc(checkchild_circular_list,
-										(checkchild_allocated + 
-										 CHECKCHILD_CHUNKSIZE) * 
-										sizeof(checkchild_t));
+	  newd = (checkchild_t *) realloc(checkchild_circular_list,
+					  (checkchild_allocated + 
+					   CHECKCHILD_CHUNKSIZE) * 
+					  sizeof(checkchild_t));
 
-		if (!newd) return NULL;
+	  if (!newd) return NULL;
 
-		checkchild_circular_list = newd;
+	  checkchild_circular_list = newd;
 
 
-		// We also need to clean things up here...
-		// if Start is > End (ie, the list wraps) we need to copy
-		// the end chunk to the new end, and update Start.
-		if (checkchild_start > checkchild_end) {
+	  // We also need to clean things up here...
+	  // if Start is > End (ie, the list wraps) we need to copy
+	  // the end chunk to the new end, and update Start.
+	  if (checkchild_start > checkchild_end) {
 
-			printf("[checkchild] relocating..\n");
+	    printf("[checkchild %d] relocating..\n",
+		   getpid());
 
-			memcpy( &checkchild_circular_list[ checkchild_start + 
-											   CHECKCHILD_CHUNKSIZE ],
-					&checkchild_circular_list[ checkchild_start ],
-					sizeof(checkchild_t) * 
-					(checkchild_allocated - checkchild_start));
-
-			checkchild_start += CHECKCHILD_CHUNKSIZE;
-			
-			if (checkchild_current)
-				checkchild_current = &checkchild_circular_list[ checkchild_start ];
-
-		}
-		
-		// Update allocated size.
-		checkchild_allocated += CHECKCHILD_CHUNKSIZE;
-
+	    memcpy( &checkchild_circular_list[ checkchild_start + 
+					       CHECKCHILD_CHUNKSIZE ],
+		    &checkchild_circular_list[ checkchild_start ],
+		    sizeof(checkchild_t) * 
+		    (checkchild_allocated - checkchild_start));
+	    
+	    checkchild_start += CHECKCHILD_CHUNKSIZE;
+	    
+	    if (checkchild_current)
+	      checkchild_current = &checkchild_circular_list[ checkchild_start ];
+	    
+	  }
+	  
+	  // Update allocated size.
+	  checkchild_allocated += CHECKCHILD_CHUNKSIZE;
+	  
 
 	}
 
@@ -140,11 +142,12 @@ checkchild_t *checkchild_addnode(unsigned int id, char *file, int type)
 	newd->id = id;
 	newd->type = type;
 
-	printf("[chechchild] adding %d -> %u : %u : %s\n",
-		   checkchild_end,
-		   id,
-		   type,
-		   file);
+	printf("[checkchild %d] adding %d -> %u : %u : %s\n",
+	       getpid(),
+	       checkchild_end,
+	       id,
+	       type,
+	       file);
 
 
 	checkchild_end++;
@@ -162,75 +165,76 @@ checkchild_t *checkchild_addnode(unsigned int id, char *file, int type)
 // Return the node start points to (unless we are empty).
 void checkchild_assign_current(void)
 {
-	checkchild_t *result;
+  checkchild_t *result;
 
-	// Empty?
-	if (checkchild_start == checkchild_end) {
+  // Empty?
+  if (checkchild_start == checkchild_end) {
 
-		checkchild_current = NULL;
-		return; 
-	}
+    checkchild_current = NULL;
+    return; 
+  }
 
-	result = &checkchild_circular_list[checkchild_start];
+  result = &checkchild_circular_list[checkchild_start];
 
-	printf("[checkchild] popped %d -> %u : %u : %s\n",
-		   checkchild_start,
-		   result->id,
-		   result->type,
-		   result->name);
-
-
-	checkchild_current = result;
-
-	checkchild_processnode();
-
+  printf("[checkchild] popped %d -> %u : %u : %s\n",
+	 checkchild_start,
+	 result->id,
+	 result->type,
+	 result->name);
+  
+  
+  checkchild_current = result;
+  
 }
 
 
 // Release the node start points to (as we are done with it)
 void checkchild_releasenode(void)
 {
-	checkchild_t *node;
+  checkchild_t *node;
 
-	node = &checkchild_circular_list[checkchild_start];
+  node = &checkchild_circular_list[checkchild_start];
 
-	if (checkchild_current &&
-		(node != checkchild_current))
-		printf("[checkchild] internal error (node != current)!?\n");
-
-
-	if (checkchild_start == checkchild_end) {
-		printf("[checkchild] error, list is empty when we've called releasenode\n");
-	}
+  if (checkchild_current &&
+      (node != checkchild_current))
+    printf("[checkchild %d] internal error (node != current)!?\n",
+	   getpid());
 
 
-	printf("[checkchild] Releasing %d -> %u : %u : %s\n",
-		   checkchild_start,
-		   node->id,
-		   node->type,
-		   node->name);
-
-	SAFE_FREE(node->name);
-	node->id = 0;
+  if (checkchild_start == checkchild_end) {
+    printf("[checkchild %d] error, list is empty when we've called releasenode\n",
+	   getpid());
+  }
 
 
+  printf("[checkchild %d] Releasing %d -> %u : %u : %s\n",
+	 getpid(),
+	 checkchild_start,
+	 node->id,
+	 node->type,
+	 node->name);
 
-	checkchild_start++;
-
-	if (checkchild_start >= checkchild_allocated)
-		checkchild_start = 0;
+  SAFE_FREE(node->name);
+  node->id = 0;
 
 
-	checkchild_current = NULL;
 
-	printf("[checkchild] current NULL\n");
+  checkchild_start++;
 
-	// Attempt to re-assign it if we can...
-	// AH! This calls assign, which calls process, which calls int/ext process
-	// that does the task, that calls release, which calls assign, which...
-	// So, lets make it NULL here, and sleep for one second. 
-	// io_force_loop = 1; // No sleep.
-	//	checkchild_assign_current();
+  if (checkchild_start >= checkchild_allocated)
+    checkchild_start = 0;
+
+
+  checkchild_current = NULL;
+
+  printf("[checkchild] current NULL\n");
+
+  // Attempt to re-assign it if we can...
+  // AH! This calls assign, which calls process, which calls int/ext process
+  // that does the task, that calls release, which calls assign, which...
+  // So, lets make it NULL here, and sleep for one second. 
+  // io_force_loop = 1; // No sleep.
+  //	checkchild_assign_current();
 
 }
 
@@ -251,7 +255,8 @@ void checkchild_process( char *line )
 	token = misc_digtoken(&ar, ":\r\n");
 
 	if (!token) {
-		printf("[checkchild] parse error '%s'\n", line);
+		printf("[checkchild %d] parse error '%s'\n", 
+		       getpid(), line);
 		return;
 	}
 
@@ -261,7 +266,8 @@ void checkchild_process( char *line )
 	token = misc_digtoken(&ar, ":\r\n");
 
 	if (!token) {
-		printf("[checkchild] parse error '%s'\n", line);
+		printf("[checkchild %d] parse error '%s'\n", 
+		       getpid(), line);
 		return;
 	}
 
@@ -270,7 +276,8 @@ void checkchild_process( char *line )
 
 	file = ar;
 
-	printf("[checkchild] parsed '%u:%u:%s'\n", id, type, file);
+	printf("[checkchild %d] parsed '%u:%u:%s'\n", 
+	       getpid(), id, type, file);
 
 
 
@@ -298,9 +305,10 @@ void checkchild_processnode( void )
 	if (!checkchild_current)
 		return;
 
-	printf("[checkchild] current set to %u : %s\n",
-		   checkchild_current->id,
-		   checkchild_current->name);
+	printf("[checkchild %d] current set to %u : %s\n",
+	       getpid(),
+	       checkchild_current->id,
+	       checkchild_current->name);
 
 
 
@@ -310,28 +318,34 @@ void checkchild_processnode( void )
 	// in lftpd. (And we'd better not)
 	for (c = check_node_head; c; c=c->next) {
 			   
-		if (!fnmatch(c->ext, checkchild_current->name, FNM_CASEFOLD)) {
+	  if (!fnmatch(c->ext, checkchild_current->name, FNM_CASEFOLD)) {
 			
-			if ((c->exe == (char *)CHECK_INTERNAL)) {
+	    if ((c->exe == (char *)CHECK_INTERNAL)) {
 
-				checkchild_test_int( checkchild_current->id, 
-									 checkchild_current->name,
-									 checkchild_current->type);
-				break;
+	      checkchild_test_int( checkchild_current->id, 
+				   checkchild_current->name,
+				   checkchild_current->type);
+	      return;
 
-			} else { // Do external...
+	    } else { // Do external...
 
-				checkchild_test_ext( checkchild_current->id, 
-									 checkchild_current->name,
-									 c->exe);
-				break;
+	      checkchild_test_ext( checkchild_current->id, 
+				   checkchild_current->name,
+				   c->exe);
+	      return;
 
-			} // external
+	    } // external
 
-		} // casefold
+	  } // casefold
 
 	} // for
 
+	// We usually do not get here, so assume it is processed
+	printf("[checkchild %d] no matching test, skipping\n",
+	       getpid());
+	lion_printf(parent_handle, "%u!13/no match\n", 
+		    checkchild_current->id);
+	checkchild_releasenode();
 }
 
 
@@ -357,7 +371,8 @@ int checkchild_handler( lion_t *handle,
 
 	case LION_INPUT:
 		// New request from parent.
-		printf("[checkchild] request '%s'\n", line);
+		printf("[checkchild %d] request '%s'\n", 
+		       getpid(), line);
 
 		checkchild_process( line );
 		break;
@@ -370,71 +385,10 @@ int checkchild_handler( lion_t *handle,
 
 
 
-#if 0
-			/* Build DIZDIR and DIZFILE for testing as well. */
-			// Path to execute.
-			snprintf(buf, sizeof(buf), "%s \"%s\"", c->exe, d->name);
-
-			
-#ifndef NOPUTENV
-			setenv("DIZ_DIR", check_node->dir_name, 1);
-			setenv("DIZ_FILE", check_node->file_name, 1);
-			setenv("DIZ_USER", d->login->user, 1);
-			setenv("DIZ_GROUP", d->login->current_group ?
-				   ((struct group *)d->login->current_group)->name :
-				   "Independent", 1);
-			setenv("DIZ_SITE", 
-				   server_greeting ? server_greeting : localhost_a, 1);
-#else
-			{
-				static char user[80];
-				static char group[80];
-				static char site[80];
-				
-				snprintf(genbuf, sizeof(genbuf), "DIZ_DIR=%s", 
-						 check_node->dir_name);
-				putenv(genbuf);
-				snprintf(path, sizeof(path), "DIZ_FILE=%s", 
-						 check_node->file_name);
-				putenv(path);
-				snprintf(user, sizeof(user), "DIZ_USER=%s", d->login->user);
-				putenv(user);
-				snprintf(group, sizeof(group), "DIZ_GROUP=%s", 
-						 d->login->current_group ?
-						 ((struct group *)d->login->current_group)->name :
-						 "Independent");
-				putenv(group);
-				snprintf(site, sizeof(site), "DIZ_SITE=%s", 
-						 server_greeting ? server_greeting :
-						 localhost_a);
-				putenv(site);
-				
-			}	  
-#endif
-			
-			
-			// Call lion!
-			// basically this then sorts things out and eventually get a return
-			// code (good, bad, unknown/timeout) then it calls check_return 
-			// that compares the results, which in turn calls _action that
-			// acts on the return status.
-			consolef("executing '%s' for %p\n", buf, check_node);
-
-			lion_set_handler(
-							 lion_system( buf, 1, LION_FLAG_FULFILL, 
-										  check_node),
-							 check_handler);
-			// Unattractive that is! But fulfill guarantees us a node back
-			// so it is perfectly valid to call set_handler on it.
-#endif
-
-
-
-
-
-
 int checkchild_init( lion_t *parent, void *user_data, void *arg )
 {
+
+	consolef("[checkchild %d] running...\n", getpid());
 
 #ifdef LOG_TO_FILE
 	FILE *i;
@@ -455,8 +409,10 @@ int checkchild_init( lion_t *parent, void *user_data, void *arg )
 	}
 
 #endif
-
-	consolef("[checkchild] running...\n");
+	checkchild_allocated = 0;
+	checkchild_start = 0;
+	checkchild_end = 0;
+	checkchild_current = NULL;
 
 	parent_handle = parent;
 
@@ -476,16 +432,36 @@ int checkchild_init( lion_t *parent, void *user_data, void *arg )
 
 	while(!checkchild_quit) {
 
-		lion_poll(0,1);
+	  lion_poll(0,1);
 
-		if (!checkchild_current) {
-
-			checkchild_assign_current();
-
-		}
-
+	  if (!checkchild_current)
+	    checkchild_assign_current();
+	  if (checkchild_current)
+	    checkchild_processnode();
+	  
 	}
 
+	if (checkchild_start == checkchild_end)
+	  return 0;
+
+	// Save queue
+	FILE *fp;
+	char name[256];
+	snprintf(name, sizeof (name), "/var/tmp/checklist%d.txt",
+		 getpid());
+	fp = fopen(name, "w");
+	if (!fp)
+	  return 0;
+	printf("Dumping list to '%s'\n", name);
+
+	do {
+	  checkchild_assign_current();
+	  if (checkchild_current == NULL)
+	    break;
+	  fprintf(fp, "%s\r\n", checkchild_current->name);
+	  checkchild_releasenode();
+	} while (1); 
+	fclose(fp);
 	return 0;
 
 }
@@ -624,9 +600,12 @@ void checkchild_test_int( unsigned int id, char *file, int type )
 			  , 0400);
 
 	if (fd < 0) {
+	  int fail = errno;
+	  printf("Failed to open %s %d\n",
+		 file, fail);
 		// Return failure
 		lion_printf(parent_handle, "%u!%d:%s\n", id,
-					errno, strerror(errno));
+					fail, strerror(fail));
 
 		checkchild_releasenode();
 		return;

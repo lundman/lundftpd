@@ -440,7 +440,33 @@ void quota_stor_close(struct data_node *d)
 	//	 (float)bytes, diff);
 
 
-	if (!bytes) return;
+	// If user1 starts transfer, then user2 tries to
+	// start, it will fail due to exclusive and we
+	// end up in here, with no-bytes. This is not
+	// the place to clean up no transfers
+	if (!bytes) {
+#if 0
+	  char *p;
+	  struct stat stbf;
+	  //	  log_xfer("STOR %s %s no-bytes, chmod file\n",
+	  //	   d->login->user,
+	  //	   d->name);
+
+	  if (stat(d->name, &stbf) == 0 &&
+	      stbf.st_size == 0) {
+#if 0
+	  remove(d->name);
+#ifdef RACESTATS
+	  p = pathsplit(d->name);
+	  race_file_deleted(d->name, p);
+	  pathfixsplit(d->name, p);
+#endif
+#endif
+	  chmod(d->name, (mode_t) 0666);                  
+	  }
+#endif
+	  return;
+	}
 
 	// We probably need to remember this for the file checking, so we can
 	// update credits later.
