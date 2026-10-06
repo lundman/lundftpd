@@ -86,7 +86,7 @@ unsigned long main_passiveIP = 0;
 time_t server_uptime = 0;
 
 
-void main_rehash_handler(void);
+void main_rehash_handler(int sig);
 
 
 
@@ -262,7 +262,7 @@ void args_load(int argc, char **argv)
 }
 
 
-void sig_int()
+void sig_int(int sig)
 {
 	signal(SIGINT, sig_int);
 	io_exit = 1;
@@ -672,7 +672,7 @@ int main(int argc, char **argv)
 
 
 #ifndef WIN32
-void main_rehash_handler()
+void main_rehash_handler(int sig)
 {
 
 	signal(SIGHUP, main_rehash_handler);

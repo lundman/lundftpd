@@ -24,7 +24,6 @@ AC_CONFIG_SUBDIRS([lion])
 
 CFLAGS="$CFLAGS -I../lion/src/ -I../lion/contrib/libdirlist/"
 
-AC_TYPE_SIGNAL
 
 AC_HEADER_TIME
 
@@ -109,7 +108,7 @@ AC_CACHE_CHECK([for OpenSSL directory], ac_cv_openssl_dir, [
   saved_LDFLAGS="$LDFLAGS"
   saved_CPPFLAGS="$CPPFLAGS"
   ssl_found=no
-  for ssldir in $tryssldir "" $prefix /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/athena /usr/pkg /opt /opt/openssl ; do
+  for ssldir in $tryssldir "" $prefix /opt/homebrew/opt/openssl@3 /opt/homebrew/opt/openssl /usr/local/opt/openssl@3 /usr/local/opt/openssl /opt/local /usr/local/openssl /usr/lib/openssl /usr/local/ssl /usr/lib/ssl /usr/local /usr/athena /usr/pkg /opt /opt/openssl ; do
     LDFLAGS="$saved_LDFLAGS"
     LIBS="$saved_LIBS -lssl -lcrypto"
 
@@ -155,6 +154,8 @@ AC_DEFINE([IRCBOT],[],[Support for ircbots])
 AC_MSG_NOTICE([Enabling IRCBOT...])
 LIBS="$LIBS -lssl -lcrypto"
 if test "$ac_cv_openssl_dir" != "(system)"; then
+  # Make lion's configure use the same OpenSSL we found
+  ac_configure_args="$ac_configure_args '--with-ssl-dir=$ac_cv_openssl_dir'"
   if test -d "$ac_cv_openssl_dir/lib" ; then
     LDFLAGS="-L$ac_cv_openssl_dir/lib $LDFLAGS"
     ssl_libdir="$ac_cv_openssl_dir/lib"
@@ -240,25 +241,25 @@ AC_LANG_PUSH(C)
 dnl solaris has some odd defines it needs in order to propperly compile ctime_r
  	AC_MSG_CHECKING([if ctime_r need special care to act posixly correct])
  	AC_LINK_IFELSE(
- 	    AC_LANG_PROGRAM(
+ 	    [AC_LANG_PROGRAM(
  	           [[#include <time.h>]],
  	           [[ctime_r(NULL,NULL,0)]]
- 	                   ),
+ 	                   )],
  	    [ CPPFLAGS="$CPPFLAGS -D_POSIX_PTHREAD_SEMANTICS"
  	      AC_LINK_IFELSE(
- 	          AC_LANG_PROGRAM(
+ 	          [AC_LANG_PROGRAM(
  	                [[#include <time.h>]],
  	                [[ctime_r(NULL,NULL)]]
- 	                         ),
+ 	                         )],
  	          [AC_MSG_RESULT([yes, this seems to be solaris style])],
  	          [AC_MSG_ERROR([Can't figure how to compile ctime_r])]
  	      )
  	    ],
  	    [ AC_LINK_IFELSE(
- 	          AC_LANG_PROGRAM(
+ 	          [AC_LANG_PROGRAM(
  	                [[#include <time.h>]],
  	                [[ctime_r(NULL,NULL)]]
- 	                         ),
+ 	                         )],
  	          [AC_MSG_RESULT(no)],
  	          [AC_MSG_ERROR([Can't figure how to compile ctime_r])]
  	      )
@@ -266,8 +267,7 @@ dnl solaris has some odd defines it needs in order to propperly compile ctime_r
  	)
 AC_LANG_POP(C)
 
-dnl AC_CONFIG_HEADERS([config.h])
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile win32/Makefile win32/lundftpd/Makefile win32/lundftpd/lundftpd/Makefile eyot/Makefile eyot/conf/Makefile])
 AC_OUTPUT
 

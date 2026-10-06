@@ -3,6 +3,7 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/time.h>
@@ -641,12 +642,12 @@ struct conf_item *conf_parseblock(int *linecnt, FILE *fp)
 			if (c2 == 'n' || c2 == 'N') {
 
 				value[0] = '1';
-				conf_add(&top, field, (void *)atoi(value), CONF_BOOL, *linecnt);
+				conf_add(&top, field, (void *)(intptr_t)atoi(value), CONF_BOOL, *linecnt);
 			} else if (c2 == 'f' || c2 == 'F') {
 				char c3 = fgetc(fp);
 				if (c3 == 'f' || c3 == 'F') {
 
-					conf_add(&top, field, (void *)atoi(value), CONF_BOOL, *linecnt);
+					conf_add(&top, field, (void *)(intptr_t)atoi(value), CONF_BOOL, *linecnt);
 					value[0] = '1';
 
 				} else {
@@ -666,7 +667,7 @@ struct conf_item *conf_parseblock(int *linecnt, FILE *fp)
 				char c3 = fgetc(fp);
 				if (c3 == 's' || c3 == 'S') {
 					value[0] = '1';
-					conf_add(&top, field, (void *)atoi(value), CONF_BOOL, *linecnt);
+					conf_add(&top, field, (void *)(intptr_t)atoi(value), CONF_BOOL, *linecnt);
 				} else {
 					ungetc(c3, fp);
 				}
@@ -678,7 +679,7 @@ struct conf_item *conf_parseblock(int *linecnt, FILE *fp)
 		} else if (c == 'n' || c == 'N') {
 			char c2 = fgetc(fp);
 			if (c2 == 'o' || c2 == 'O') {
-				conf_add(&top, field, (void *)atoi(value), CONF_BOOL, *linecnt);
+				conf_add(&top, field, (void *)(intptr_t)atoi(value), CONF_BOOL, *linecnt);
 				value[0] = '1';
 			} else {
 				ungetc(c2, fp);
@@ -712,9 +713,9 @@ struct conf_item *conf_parseblock(int *linecnt, FILE *fp)
 
 			// Try and read numbers beginning with 0 as octal.
 			if (value[0] == 48)
-				conf_add(&top, field, (void *)strtol(value, NULL, 8), CONF_INT, *linecnt);
+				conf_add(&top, field, (void *)(intptr_t)strtol(value, NULL, 8), CONF_INT, *linecnt);
 			else
-				conf_add(&top, field, (void *)atoi(value), CONF_INT, *linecnt);
+				conf_add(&top, field, (void *)(intptr_t)atoi(value), CONF_INT, *linecnt);
 
 
 		}
@@ -777,20 +778,16 @@ void conf_add(struct conf_item **top, char *field, void *value, int type, int li
 	switch (ci->type) {
 
 		case CONF_STRING:
-			if ((ci->value = malloc(strlen((char *)value))) == NULL) {
-				perror("malloc");
+			if ((ci->value = strdup((char *)value)) == NULL) {
+				perror("strdup");
 				exit(-1);
 			}
-			ci->value = strdup((char *)value);
 			break;
 
 		case CONF_INT:
 		case CONF_BOOL:
-			if ((ci->value = malloc(sizeof(int))) == NULL) {
-				perror("malloc");
-				exit(-1);
-			}
-			ci->value = (int)value;
+			// Integers are stored in the pointer itself.
+			ci->value = value;
 			break;
 
 		case CONF_BLOCK:
@@ -840,7 +837,7 @@ int conf_getint(struct conf_item *ci, char *field)
 	for (run = ci; run; run = run->next) {
 		if (!strcasecmp(run->name, field)) {
 			if (run->type & CONF_INT)
-				return (int)run->value;
+				return (int)(intptr_t)run->value;
 			fprintf(stderr,"[conf] Warning: Field %s at line %d is not an integer"
 						" and should be!\n", run->name, run->line);
 		}
@@ -858,7 +855,7 @@ int conf_getbool(struct conf_item *ci, char *field)
 	for (run = ci; run; run = run->next) {
 		if (!strcasecmp(run->name, field)) {
 			if (run->type & CONF_BOOL)
-				return (int)run->value;
+				return (int)(intptr_t)run->value;
 			fprintf(stderr,"[conf] Warning: Field %s at line %d is not a boolean"
 						" and should be!\n", run->name, run->line);
 		}
@@ -884,7 +881,7 @@ int conf_getint_from(struct conf_item *ci)
 {
 
 	if (ci->type & CONF_INT)
-		return (int)ci->value;
+		return (int)(intptr_t)ci->value;
 
 	fprintf(stderr,"[conf] Warning: Field %s at line %d is not an integer and should be!\n",
 				ci->name, ci->line);
@@ -896,7 +893,7 @@ int conf_getbool_from(struct conf_item *ci)
 {
 
 	if (ci->type & CONF_BOOL)
-		return (int)ci->value;
+		return (int)(intptr_t)ci->value;
 
 	fprintf(stderr,"[conf] Warning: Field %s at line %d is not a boolean and should be!\n",
 				ci->name, ci->line);

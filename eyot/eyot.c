@@ -26,7 +26,7 @@ static int master_switch = 0;
 
 
 
-void exit_interrupt(void)
+void exit_interrupt(int sig)
 {
 
 	master_switch = 1;

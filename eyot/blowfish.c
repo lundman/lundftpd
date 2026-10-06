@@ -10,6 +10,9 @@
 
 
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "blowfish.h"
 
 /* #define S(x,i) (bf_S[i][x.w.byte##i]) */

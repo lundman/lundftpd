@@ -99,6 +99,7 @@ void    irc_free               ( void );
 void    irc_poll               ( void );
 int     irc_say_all            ( char const *, ...);
 int     irc_say_channel        ( irc_channel_t *, char const *, ...);
+int     irc_reply              ( irc_server_t *, char const *, ...);
 void    irc_setactive          ( irc_server_t *, char * );
 irc_server_t *irc_find_by_name ( char * );
 irc_channel_t *ircchan_find_by_name ( irc_server_t *, char * );

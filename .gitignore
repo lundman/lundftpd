@@ -3,3 +3,17 @@
 Makefile
 *.in
 *.depend
+*~
+.deps/
+autom4te.cache/
+aclocal.m4
+build-aux/
+config.h
+config.log
+config.status
+configure
+stamp-h1
+src/lundftpd
+eyot/eyot
+# lion is a separate repo, checked out here (see README.md)
+lion/
